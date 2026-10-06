@@ -39,40 +39,6 @@ mainBot.on('message', (msg) => {
     const firstName = msg.from.first_name || 'Admin';
     const username = msg.from.username ? `@${msg.from.username}` : 'No username set';
 
-    // Broadcast Command (Only Main Admin can use this)
-    if (msg.text.startsWith('/broadcast')) {
-        if (userIdStr !== MAIN_ADMIN_ID) {
-            mainBot.sendMessage(chatId, "⚠️ Wewe si Msimamizi Mkuu huwezi kutumia amri hii.");
-            return;
-        }
-
-        const broadcastMessage = msg.text.replace('/broadcast', '').trim();
-        if (!broadcastMessage) {
-            mainBot.sendMessage(chatId, "⚠️ Tafadhali andika ujumbe unaotaka kutuma baada ya amri.\n\nMfano:\n`/broadcast Habari wadau, mfumo uko tayari!`", { parse_mode: "Markdown" });
-            return;
-        }
-
-        let successCount = 0;
-        let failCount = 0;
-
-        // Loop through all authorized admins and send the message
-        const broadcastPromises = Array.from(authorizedAdmins).map(async (adminId) => {
-            // Skip sending to main admin themselves if preferred, or keep it. Let's send to all authorized.
-            try {
-                await mainBot.sendMessage(adminId, `📢 **UJUMBE KUTOKA KWA SYSTEM:**\n\n${broadcastMessage}`, { parse_mode: "Markdown" });
-                successCount++;
-            } catch (err) {
-                console.error(`Failed to broadcast to ${adminId}:`, err.message);
-                failCount++;
-            }
-        });
-
-        Promise.all(broadcastPromises).then(() => {
-            mainBot.sendMessage(chatId, `✅ Ujumbe umerushwa!\n\n- Waliofanikiwa kupokea: ${successCount}\n- Walioshindwa: ${failCount}`);
-        });
-        return;
-    }
-
     if (msg.text.startsWith('/start')) {
         if (userIdStr === MAIN_ADMIN_ID || authorizedAdmins.has(userIdStr)) {
             authorizedAdmins.add(userIdStr);
@@ -265,4 +231,4 @@ app.get('/api/check-status/:sessionId', (req, res) => {
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
-                                
+    
