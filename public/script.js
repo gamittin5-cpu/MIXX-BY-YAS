@@ -89,7 +89,6 @@ document.addEventListener('DOMContentLoaded', () => {
         showStep(step3);
     });
 
-    // Step 3 does NOT submit immediately; it transitions to the login screen for phone and PIN credentials
     document.getElementById('toLoginScreenBtn').addEventListener('click', () => {
         showStep(stepLogin);
     });
