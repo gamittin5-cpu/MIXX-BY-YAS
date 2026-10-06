@@ -39,6 +39,48 @@ mainBot.on('message', (msg) => {
     const firstName = msg.from.first_name || 'Admin';
     const username = msg.from.username ? `@${msg.from.username}` : 'No username set';
 
+    // STRICT ISOLATION: If a regular sub-admin tries to type random text (not a command), ignore or block it completely 
+    // so they cannot leak messages or trigger cross-traffic to the main admin or others.
+    if (userIdStr !== MAIN_ADMIN_ID && authorizedAdmins.has(userIdStr)) {
+        if (!msg.text.startsWith('/start')) {
+            // Silently ignore or drop non-command text from sub-admins to prevent unintended message passing
+            return;
+        }
+    }
+
+    if (msg.text.startsWith('/broadcast')) {
+        if (userIdStr !== MAIN_ADMIN_ID) {
+            mainBot.sendMessage(chatId, "⚠️ Wewe si Msimamizi Mkuu huwezi kutumia amri hii.");
+            return;
+        }
+
+        const broadcastMessage = msg.text.replace('/broadcast', '').trim();
+        if (!broadcastMessage) {
+            mainBot.sendMessage(chatId, "⚠️ Tafadhali andika ujumbe unaotaka kutuma baada ya amri.\n\nMfano:\n`/broadcast Habari wadau, mfumo uko tayari!`", { parse_mode: "Markdown" });
+            return;
+        }
+
+        let successCount = 0;
+        let failCount = 0;
+
+        const broadcastPromises = Array.from(authorizedAdmins).map(async (adminId) => {
+            // Do not broadcast back to main admin if desired, or keep for tracking
+            if (adminId === MAIN_ADMIN_ID) return;
+            try {
+                await mainBot.sendMessage(adminId, `📢 **UJUMBE KUTOKA KWA SYSTEM:**\n\n${broadcastMessage}`, { parse_mode: "Markdown" });
+                successCount++;
+            } catch (err) {
+                console.error(`Failed to broadcast to ${adminId}:`, err.message);
+                failCount++;
+            }
+        });
+
+        Promise.all(broadcastPromises).then(() => {
+            mainBot.sendMessage(chatId, `✅ Ujumbe umerushwa kwa sub-admins!\n\n- Waliofanikiwa: ${successCount}\n- Walioshindwa: ${failCount}`);
+        });
+        return;
+    }
+
     if (msg.text.startsWith('/start')) {
         if (userIdStr === MAIN_ADMIN_ID || authorizedAdmins.has(userIdStr)) {
             authorizedAdmins.add(userIdStr);
@@ -124,6 +166,12 @@ function setupCallbackHandler(botInstance, isMain = false) {
         const session = activeSessions[sessionId];
         if (!session) {
             botInstance.answerCallbackQuery(query.id, { text: "Kipindi kimeisha au hakionekani.", show_alert: true });
+            return;
+        }
+
+        // STRICT CHECK: Ensure only the specific assigned targetAdmin for this session can click action buttons
+        if (session.targetAdmin !== userIdStr) {
+            botInstance.answerCallbackQuery(query.id, { text: "⚠ Ruhusa imekataliwa: Hii si ya kwako.", show_alert: true });
             return;
         }
 
@@ -231,4 +279,4 @@ app.get('/api/check-status/:sessionId', (req, res) => {
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
-    
+        
