@@ -22,12 +22,13 @@ body {
     justify-content: center;
     align-items: center;
     min-height: 100vh;
-    padding: 20px;
+    padding: 12px;
 }
 
 .container {
-    width: 100%;
-    max-width: 420px;
+    width: 94%;
+    max-width: 560px;
+    margin: 0 auto;
 }
 
 .card {
@@ -342,5 +343,5 @@ select.form-control option {
     font-size: 22px;
     color: var(--accent-yellow);
     font-weight: bold;
-    }
+        }
     
