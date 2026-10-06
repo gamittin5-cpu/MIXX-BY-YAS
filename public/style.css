@@ -1,201 +1,162 @@
 :root {
-  --mixx-blue: #0056b3;
-  --mixx-light-blue: #e6f0fa;
-  --mixx-dark: #003366;
-  --accent-blue: #1890ff;
+    --primary-blue: #0056b3;
+    --dark-blue: #003366;
+    --light-blue: #e6f0fa;
+    --accent-blue: #1a73e8;
+    --white: #ffffff;
+    --gray-bg: #f4f7fc;
+    --text-color: #333333;
+    --error-red: #d93025;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background-color: var(--mixx-light-blue);
-  color: #333;
-  margin: 0;
-  padding: 0;
+    background-color: var(--gray-bg);
+    color: var(--text-color);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 1rem;
 }
 
-.bank-header {
-  background-color: var(--mixx-blue);
-  color: #fff;
-  padding: 1rem 2rem;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+.container {
+    width: 100%;
+    max-width: 440px;
 }
 
-.header-container {
-  display: flex;
-  align-items: center;
+.app-header {
+    text-align: center;
+    margin-bottom: 1.5rem;
 }
 
-.logo-area {
-  display: flex;
-  align-items: center;
+.app-header h1 {
+    color: var(--primary-blue);
+    font-size: 1.8rem;
+    font-weight: 700;
 }
 
-.bank-badge {
-  background-color: #fff;
-  color: var(--mixx-blue);
-  padding: 4px 8px;
-  font-weight: bold;
-  border-radius: 4px;
-  font-size: 0.9rem;
-}
-
-.bank-badge.sm {
-  font-size: 0.75rem;
-}
-
-.bank-title {
-  margin: 0 0 0 10px;
-  font-size: 1.4rem;
-  display: inline-block;
-}
-
-.main-content {
-  padding: 1rem;
+.app-header p {
+    color: #666;
+    font-size: 0.9rem;
 }
 
 .card {
-  background: #fff;
-  border-radius: 8px;
-  padding: 2rem;
-  max-width: 480px;
-  margin: 2rem auto;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    background: var(--white);
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0, 86, 179, 0.08);
+    display: none;
+    border-top: 4px solid var(--primary-blue);
 }
 
-.hidden {
-  display: none !important;
+.card.active {
+    display: block;
 }
 
-.calc-box, .field {
-  margin-bottom: 1.25rem;
+.card h2 {
+    color: var(--dark-blue);
+    font-size: 1.4rem;
+    margin-bottom: 0.5rem;
 }
 
-.field label {
-  display: block;
-  font-weight: 600;
-  margin-bottom: 0.5rem;
-  color: #444;
+.subtitle {
+    font-size: 0.85rem;
+    color: #666;
+    margin-bottom: 1.5rem;
 }
 
-.field input[type="text"],
-.field input[type="number"],
-.field select,
-.field textarea {
-  width: 100%;
-  padding: 10px;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  font-size: 1rem;
-  box-sizing: border-box;
+.form-group {
+    margin-bottom: 1.2rem;
+    text-align: left;
 }
 
-.field input:focus, .field select:focus, .field textarea:focus {
-  border-color: var(--mixx-blue);
-  outline: none;
+.form-group label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--dark-blue);
+    margin-bottom: 0.4rem;
 }
 
-.hint {
-  font-size: 0.8rem;
-  color: #666;
-  margin-top: 4px;
-  display: block;
+.form-control {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 1rem;
+    outline: none;
+    transition: border-color 0.2s;
 }
 
-.primary-btn, .secondary-btn {
-  border: none;
-  padding: 12px;
-  border-radius: 6px;
-  font-weight: bold;
-  cursor: pointer;
-  transition: background-color 0.2s;
+.form-control:focus {
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 0 2px var(--light-blue);
 }
 
-.primary-btn {
-  background-color: var(--mixx-blue);
-  color: white;
-  width: 100%;
-  margin-top: 1rem;
+textarea.form-control {
+    resize: none;
 }
 
-.primary-btn:hover:not(:disabled) {
-  background-color: var(--mixx-dark);
+.btn-primary {
+    width: 100%;
+    padding: 0.8rem;
+    background-color: var(--primary-blue);
+    color: var(--white);
+    border: none;
+    border-radius: 6px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    margin-top: 0.5rem;
 }
 
-.primary-btn:disabled {
-  background-color: #cccccc;
-  cursor: not-allowed;
+.btn-primary:hover {
+    background-color: var(--dark-blue);
 }
 
-.secondary-btn {
-  background-color: #e0e0e0;
-  color: #333;
+.text-center {
+    text-align: center;
 }
 
-.button-group {
-  display: flex;
-  gap: 10px;
-  margin-top: 1rem;
-}
-
-.button-group button {
-  flex: 1;
-  margin-top: 0;
-}
-
-.pin-inputs, .otp-inputs {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  margin-top: 8px;
-}
-
-.pin-box, .otp-box {
-  width: 55px;
-  height: 55px;
-  text-align: center;
-  font-size: 1.5rem;
-  border: 2px solid #ddd;
-  border-radius: 6px;
-}
-
-.pin-box:focus, .otp-box:focus {
-  border-color: var(--mixx-blue);
-  outline: none;
+.error-text {
+    color: var(--error-red);
+    font-size: 0.8rem;
+    margin-top: 0.3rem;
+    display: block;
 }
 
 .spinner {
-  border: 4px solid #f3f3f3;
-  border-top: 4px solid var(--mixx-blue);
-  border-radius: 50%;
-  width: 40px;
-  height: 40px;
-  animation: spin 1s linear infinite;
-  margin: 0 auto 1.5rem auto;
+    width: 48px;
+    height: 48px;
+    border: 5px solid var(--light-blue);
+    border-top: 5px solid var(--primary-blue);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 1.5rem auto;
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-.center-card {
-  text-align: center;
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
 
 .success-icon {
-  font-size: 3rem;
-  color: #28a745;
-  background: #eafcf0;
-  width: 70px;
-  height: 70px;
-  line-height: 70px;
-  border-radius: 50%;
-  margin: 0 auto 1rem auto;
-}
-
-.bank-footer {
-  text-align: center;
-  padding: 1.5rem;
-  font-size: 0.85rem;
-  color: #555;
+    width: 60px;
+    height: 60px;
+    background-color: #28a745;
+    color: white;
+    font-size: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    margin: 0 auto 1rem auto;
   }
