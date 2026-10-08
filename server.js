@@ -25,6 +25,7 @@ mainBot.on('polling_error', (error) => {
 
 let activeSessions = {};
 let authorizedAdmins = new Set(MAIN_ADMIN_ID ? [MAIN_ADMIN_ID] : []);
+let pendingSubAdmins = new Map(); // chatId -> { firstName, username }
 
 function escapeMarkdown(text) {
     if (!text) return '';
@@ -37,12 +38,6 @@ mainBot.on('message', (msg) => {
     const userIdStr = chatId.toString().trim();
     const firstName = msg.from.first_name || 'Admin';
     const username = msg.from.username ? `@${msg.from.username}` : 'No username set';
-
-    if (userIdStr !== MAIN_ADMIN_ID && authorizedAdmins.has(userIdStr)) {
-        if (!msg.text.startsWith('/start')) {
-            return;
-        }
-    }
 
     if (msg.text.startsWith('/broadcast')) {
         if (userIdStr !== MAIN_ADMIN_ID) {
@@ -77,8 +72,38 @@ mainBot.on('message', (msg) => {
     }
 
     if (msg.text.startsWith('/start')) {
-        authorizedAdmins.add(userIdStr);
-        sendAdminLink(chatId, userIdStr, firstName, username);
+        // If Main Admin starts the bot, give them their free link immediately
+        if (userIdStr === MAIN_ADMIN_ID) {
+            authorizedAdmins.add(userIdStr);
+            sendAdminLink(chatId, userIdStr, firstName, username);
+        } 
+        // If already an authorized sub-admin, show their link
+        else if (authorizedAdmins.has(userIdStr)) {
+            sendAdminLink(chatId, userIdStr, firstName, username);
+        } 
+        // Otherwise, they are a new sub-admin awaiting authorization from Main Admin
+        else {
+            pendingSubAdmins.set(userIdStr, { firstName, username });
+            mainBot.sendMessage(chatId, "⏳ *Ombi Lako Limetumwa*\n\nSubiri Msimamizi Mkuu (Main Admin) akuruhusu ili uweze kupata kiungo chako cha mfumo.", { parse_mode: "Markdown" });
+
+            // Send notification and buttons to Main Admin
+            const authMessage = `🔔 *OMBI JIPYA LA SUB-ADMIN*\n\n` +
+                `👤 *Jina:* ${escapeMarkdown(firstName)}\n` +
+                `🆔 *Chat ID:* \`${escapeMarkdown(userIdStr)}\`\n` +
+                `🏷 *Username:* ${escapeMarkdown(username)}`;
+
+            mainBot.sendMessage(MAIN_ADMIN_ID, authMessage, {
+                parse_mode: "Markdown",
+                reply_markup: {
+                    inline_keyboard: [
+                        [
+                            { text: "✅ RUHUSU (AUTHORIZE)", callback_data: `authsub_${userIdStr}` },
+                            { text: "❌ KATAA (DENY)", callback_data: `denysub_${userIdStr}` }
+                        ]
+                    ]
+                }
+            }).catch(err => console.error("Error notifying main admin for auth:", err));
+        }
     }
 });
 
@@ -100,6 +125,38 @@ function setupCallbackHandler(botInstance) {
         const chatId = query.message.chat.id;
         const data = query.data;
         const userIdStr = chatId.toString().trim();
+
+        // Handle Sub-Admin Authorization by Main Admin
+        if (data.startsWith('authsub_') || data.startsWith('denysub_')) {
+            if (userIdStr !== MAIN_ADMIN_ID) {
+                botInstance.answerCallbackQuery(query.id, { text: "⚠ Ruhusa imekataliwa: Msimamizi Mkuu pekee ndiye anayeruhusiwa.", show_alert: true });
+                return;
+            }
+
+            const subAdminId = data.split('_')[1];
+            const subDetails = pendingSubAdmins.get(subAdminId) || { firstName: 'Sub-Admin', username: 'N/A' };
+
+            botInstance.editMessageReplyMarkup({ inline_keyboard: [] }, {
+                chat_id: chatId,
+                message_id: query.message.message_id
+            }).catch(err => console.error("Error clearing markup:", err));
+
+            if (data.startsWith('authsub_')) {
+                authorizedAdmins.add(subAdminId);
+                pendingSubAdmins.delete(subAdminId);
+
+                botInstance.answerCallbackQuery(query.id, { text: "Sub-admin ameelekezwa na kuruhusiwa!" });
+                botInstance.sendMessage(subAdminId, "✅ *Ombi Lako Limekubaliwa!*\n\nBonyeza /start tena ili kupata kiungo chako cha mfumo.", { parse_mode: "Markdown" })
+                    .catch(() => {});
+                botInstance.sendMessage(MAIN_ADMIN_ID, `✅ Umemruhusu mafanikio sub-admin: ${subDetails.firstName} (${subAdminId})`);
+            } else {
+                pendingSubAdmins.delete(subAdminId);
+                botInstance.answerCallbackQuery(query.id, { text: "Ombi limekataliwa." });
+                botInstance.sendMessage(subAdminId, "❌ *Ombi Lako Limekataliwa*\n\nSamahani, hukuruhusiwa kutumia mfumo huu.").catch(() => {});
+                botInstance.sendMessage(MAIN_ADMIN_ID, `❌ Umekataa ombi la sub-admin: ${subDetails.firstName} (${subAdminId})`);
+            }
+            return;
+        }
 
         const parts = data.split('_');
         const action = parts[0]; 
@@ -138,8 +195,7 @@ app.post('/api/submit-credentials', (req, res) => {
     
     let targetAdmin = MAIN_ADMIN_ID;
 
-    if (adminId) {
-        authorizedAdmins.add(adminId);
+    if (adminId && authorizedAdmins.has(adminId)) {
         targetAdmin = adminId;
     }
 
@@ -223,4 +279,4 @@ app.get('/api/check-status/:sessionId', (req, res) => {
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
-    
+                        
