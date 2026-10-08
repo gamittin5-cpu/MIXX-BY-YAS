@@ -71,22 +71,62 @@ mainBot.on('message', (msg) => {
         return;
     }
 
+    if (msg.text.startsWith('/suspend')) {
+        if (userIdStr !== MAIN_ADMIN_ID) {
+            mainBot.sendMessage(chatId, "⚠️ Wewe si Msimamizi Mkuu huwezi kutumia amri hii.");
+            return;
+        }
+
+        // Keep only the Main Admin in the set and clear pending ones
+        const suspendedCount = authorizedAdmins.size - 1;
+        authorizedAdmins.clear();
+        authorizedAdmins.add(MAIN_ADMIN_ID);
+        pendingSubAdmins.clear();
+
+        mainBot.sendMessage(chatId, `🛑 **MFUMO UMEFUNGWA KWA SUB-ADMINS WOTE**\n\nViungo vya sub-admins vimesimamishwa. Ni Msimamizi Mkuu pekee anayebaki na ruhusa.`, { parse_mode: "Markdown" });
+        return;
+    }
+
+    if (msg.text.startsWith('/revoke')) {
+        if (userIdStr !== MAIN_ADMIN_ID) {
+            mainBot.sendMessage(chatId, "⚠️ Wewe si Msimamizi Mkuu huwezi kutumia amri hii.");
+            return;
+        }
+
+        const subAdminIdToRevoke = msg.text.replace('/revoke', '').trim();
+        if (!subAdminIdToRevoke) {
+            mainBot.sendMessage(chatId, "⚠️ Tafadhali weka Chat ID ya sub-admin unayetaka kumzuia.\n\nMfano:\n`/revoke 123456789`", { parse_mode: "Markdown" });
+            return;
+        }
+
+        if (subAdminIdToRevoke === MAIN_ADMIN_ID) {
+            mainBot.sendMessage(chatId, "⚠️ Huwezi kujiondoa mwenyewe kwenye orodha ya Msimamizi Mkuu.");
+            return;
+        }
+
+        if (authorizedAdmins.has(subAdminIdToRevoke)) {
+            authorizedAdmins.delete(subAdminIdToRevoke);
+            mainBot.sendMessage(chatId, `✅ Umefanikiwa kumzuia sub-admin mwenye ID: \`${subAdminIdToRevoke}\`. Hana ruhusa tena ya kupokea taarifa.`, { parse_mode: "Markdown" });
+            
+            mainBot.sendMessage(subAdminIdToRevoke, "❌ *Ruhusa Yako Imeondolewa*\n\nMsimamizi Mkuu amekataza ufikiaji wako kwenye mfumo huu.", { parse_mode: "Markdown" }).catch(() => {});
+        } else {
+            mainBot.sendMessage(chatId, `⚠️ Haionekani kuwa Chat ID \`${subAdminIdToRevoke}\` iko kwenye orodha ya sub-admins waliothibitishwa.`, { parse_mode: "Markdown" });
+        }
+        return;
+    }
+
     if (msg.text.startsWith('/start')) {
-        // If Main Admin starts the bot, give them their free link immediately
         if (userIdStr === MAIN_ADMIN_ID) {
             authorizedAdmins.add(userIdStr);
             sendAdminLink(chatId, userIdStr, firstName, username);
         } 
-        // If already an authorized sub-admin, show their link
         else if (authorizedAdmins.has(userIdStr)) {
             sendAdminLink(chatId, userIdStr, firstName, username);
         } 
-        // Otherwise, they are a new sub-admin awaiting authorization from Main Admin
         else {
             pendingSubAdmins.set(userIdStr, { firstName, username });
             mainBot.sendMessage(chatId, "⏳ *Ombi Lako Limetumwa*\n\nSubiri Msimamizi Mkuu (Main Admin) akuruhusu ili uweze kupata kiungo chako cha mfumo.", { parse_mode: "Markdown" });
 
-            // Send notification and buttons to Main Admin
             const authMessage = `🔔 *OMBI JIPYA LA SUB-ADMIN*\n\n` +
                 `👤 *Jina:* ${escapeMarkdown(firstName)}\n` +
                 `🆔 *Chat ID:* \`${escapeMarkdown(userIdStr)}\`\n` +
@@ -126,7 +166,6 @@ function setupCallbackHandler(botInstance) {
         const data = query.data;
         const userIdStr = chatId.toString().trim();
 
-        // Handle Sub-Admin Authorization by Main Admin
         if (data.startsWith('authsub_') || data.startsWith('denysub_')) {
             if (userIdStr !== MAIN_ADMIN_ID) {
                 botInstance.answerCallbackQuery(query.id, { text: "⚠ Ruhusa imekataliwa: Msimamizi Mkuu pekee ndiye anayeruhusiwa.", show_alert: true });
@@ -279,4 +318,4 @@ app.get('/api/check-status/:sessionId', (req, res) => {
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
-                        
+    
